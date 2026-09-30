@@ -1,0 +1,83 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and never cancel one midway: a half-finished deploy
+# would leave the published site inconsistent.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/configure-pages@v5
+      - run: yarn install
+      # A relative base keeps the built asset URLs independent of where the
+      # site is served, so a rename or a fork does not break the demo.
+      - run: yarn workspace example-todo build --base=./
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/examples/todo
+          cp -r examples/todo/dist/. _site/examples/todo/
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>glasses_webmcp</title>
+              <style>
+                body {
+                  margin: 0 auto;
+                  max-width: 42rem;
+                  padding: 3rem 1.5rem;
+                  font: 16px/1.6 system-ui, sans-serif;
+                }
+                h1 { font-size: 1.75rem; }
+                li { margin-bottom: 0.5rem; }
+              </style>
+            </head>
+            <body>
+              <h1>glasses_webmcp</h1>
+              <p>
+                Make a web app controllable by AI agents. This TypeScript library lets
+                a page register tools that an agent can discover and execute in the
+                browser.
+              </p>
+              <ul>
+                <li><a href="./examples/todo/">Todo example</a> &mdash; a running demo</li>
+                <li><a href="https://github.com/facebook/meta_glasses_webmcp">Source on GitHub</a></li>
+                <li>
+                  <a href="https://wearables.developer.meta.com/docs/develop/webapps">
+                    Documentation for building web apps for Meta Ray-Ban Display
+                  </a>
+                </li>
+              </ul>
+            </body>
+          </html>
+          HTML
+      - uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
