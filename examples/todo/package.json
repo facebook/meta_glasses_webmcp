@@ -1,0 +1,19 @@
+{
+  "name": "example-todo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Agentic todo-list example for glasses_webmcp: a two-screen checklist driven by hand and by agent tools",
+  "license": "BSD-3-Clause",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run src"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
+  }
+}

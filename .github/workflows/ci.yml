@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  example-todo:
+    name: Build and test the todo example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # No lockfile is exported, so resolution is fresh on every run.
+      - run: yarn install
+      - run: yarn workspace example-todo build
+      - run: yarn workspace example-todo test

@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "glasses_webmcp source workspace",
+  "license": "BSD-3-Clause",
+  "workspaces": [
+    "examples/*"
+  ]
+}

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      Agent hosts read the document title as context, so the title carries the
+      standing instruction: drive the list through todo_* tools on every turn
+      instead of narrating what could be done, and treat the list and detail
+      screens as state to move between. view.ts appends the live screen.
+    -->
+    <title>
+      Agentic Todo — two screens, the full list and one item's detail. Always act
+      with a todo_* tool: add, check off, edit notes, open an item, go back.
+      Never answer with a description of what you would do.
+    </title>
+  </head>
+  <body>
+    <div id="app">
+      <header id="bar">
+        <button id="back" class="back" type="button" hidden aria-label="Back to the whole list">
+          &lsaquo;
+        </button>
+        <h1 id="heading">Agentic Todo</h1>
+        <span id="progress" class="progress mono"></span>
+      </header>
+
+      <main id="list-view">
+        <div id="scroll" class="scroll">
+          <ul id="items" class="items"></ul>
+          <p id="empty" class="empty" hidden>Nothing left to do.</p>
+
+          <section id="completed" class="completed" hidden>
+            <button
+              id="completed-toggle"
+              class="completed-head"
+              type="button"
+              aria-expanded="false"
+              aria-controls="completed-items"
+            >
+              <span class="chevron" aria-hidden="true">&rsaquo;</span>
+              <span class="completed-label">Completed</span>
+              <span id="completed-count" class="count mono"></span>
+            </button>
+            <ul id="completed-items" class="items" hidden></ul>
+          </section>
+        </div>
+
+        <form id="add" class="add">
+          <input
+            id="new-title"
+            type="text"
+            placeholder="Add an item&hellip;"
+            aria-label="New item title"
+            autocomplete="off"
+          />
+          <button type="submit" aria-label="Add item">+</button>
+        </form>
+      </main>
+
+      <main id="detail-view" hidden>
+        <div class="detail-head">
+          <button id="detail-circle" class="circle" type="button" aria-label="Toggle done"></button>
+          <div class="detail-headings">
+            <h2 id="detail-title"></h2>
+            <p id="detail-due" class="detail-due"></p>
+          </div>
+        </div>
+        <label class="detail-label" for="detail-text">Detail</label>
+        <textarea
+          id="detail-text"
+          class="detail-text"
+          rows="8"
+          placeholder="No detail yet. Type here, or ask the agent to set it&hellip;"
+        ></textarea>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
