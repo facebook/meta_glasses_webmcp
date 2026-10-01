@@ -23,6 +23,7 @@ import {
   type TodoItem,
   type TodoState,
 } from './model.ts';
+import { animateRows, snapshotRows } from './motion.ts';
 
 export interface Page {
   bar: HTMLElement;
@@ -112,6 +113,7 @@ export function paint(page: Page, state: TodoState): void {
   const open = openItem(state);
   const onDetail = open !== null;
   const today = todayLocal();
+  const listWasShown = !page.listView.hidden;
 
   page.listView.hidden = onDetail;
   page.detailView.hidden = !onDetail;
@@ -143,6 +145,7 @@ export function paint(page: Page, state: TodoState): void {
 
   const pending = pendingItems(state);
   const finished = finishedItems(state);
+  const before = snapshotRows(page.items, listWasShown);
   page.items.innerHTML = pending.map((item) => row(item, today)).join('');
   page.empty.hidden = pending.length !== 0;
   page.drawer.hidden = finished.length === 0;
@@ -150,6 +153,13 @@ export function paint(page: Page, state: TodoState): void {
   page.drawerToggle.setAttribute('aria-expanded', String(state.drawerOpen));
   page.drawerItems.hidden = !state.drawerOpen;
   page.drawerItems.innerHTML = state.drawerOpen ? finished.map((item) => row(item, today)).join('') : '';
+  animateRows(
+    page.items,
+    before,
+    finished
+      .filter((item) => before?.includes(item.id))
+      .map((item) => ({ id: item.id, html: row(item, today) })),
+  );
 }
 
 function relativeClause(due: string, today: string): string {

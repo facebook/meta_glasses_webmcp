@@ -324,8 +324,64 @@ body {
   min-height: 0;
 }
 
+/* List motion, driven by motion.ts. A just-checked row shows its tick, then
+   collapses so the rows below slide up; a new row fades in. */
+.circle {
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.item.leaving {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.item.leaving .tick {
+  animation: tick-in 0.22s ease-out;
+}
+
+.item.collapsing {
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  transition:
+    height 0.28s ease,
+    padding 0.28s ease,
+    margin 0.28s ease,
+    opacity 0.2s ease;
+}
+
+.item.entering {
+  animation: row-in 0.32s ease-out;
+}
+
+@keyframes tick-in {
+  from {
+    transform: translateY(-1px) scale(0.2);
+  }
+  to {
+    transform: translateY(-1px) scale(1);
+  }
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .completed-head .chevron {
+  .completed-head .chevron,
+  .circle {
     transition: none;
+  }
+
+  .item.entering,
+  .item.leaving .tick {
+    animation: none;
   }
 }
