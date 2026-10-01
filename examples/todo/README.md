@@ -10,9 +10,11 @@ the same state. The list persists in `localStorage`, so it survives a reload.
 
 Tool registration goes through the small local registry in `src/webmcp.ts`,
 so the page runs as an ordinary app with no agent host present and the tools
-stay drivable in tests. Once the `glasses_webmcp` library lands in this repo,
-this example will register through it instead; the tool names and snapshot
-shape stay the same.
+stay drivable in tests.
+
+| Sample | Install |
+| :---: | :---: |
+| ![Agentic Todo demo: asked to note the returned books and a package to ship by 5 today, the assistant checks off the books and adds the package due today](demo.gif) | ![QR code that installs the Agentic Todo example on Meta Ray-Ban Display](install-qr.svg) |
 
 ## Run the sample
 
@@ -149,7 +151,3 @@ all-or-nothing batches, full-permutation reorders, and the detail fallback
 when the open item is removed. `src/tools.test.ts` drives the registered
 tools through `executeTool()` the way a host would, asserting the snapshot
 shape, the read-first registration order, and the atomic reorder.
-
-## Stack
-
-Vite 6, TypeScript, Vitest. No framework, no runtime dependencies.
