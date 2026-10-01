@@ -88,6 +88,90 @@ describe('tool registration', () => {
   });
 });
 
+interface FakeContext {
+  registered: string[];
+  unregistered: string[];
+  registerTool: (tool: { name: string }) => void;
+  unregisterTool: (name: string) => void;
+}
+
+function fakeContext(): FakeContext {
+  const ctx: FakeContext = {
+    registered: [],
+    unregistered: [],
+    registerTool: (tool) => {
+      ctx.registered.push(tool.name);
+    },
+    unregisterTool: (name) => {
+      ctx.unregistered.push(name);
+    },
+  };
+  return ctx;
+}
+
+// Node defines its own navigator, so the originals are restored, not deleted.
+function withGlobals(globals: { document?: unknown; navigator?: unknown }, run: () => void): void {
+  const saved = new Map<string, PropertyDescriptor | undefined>();
+  for (const [key, value] of Object.entries(globals)) {
+    saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+    Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  }
+  try {
+    run();
+  } finally {
+    for (const [key, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete (globalThis as Record<string, unknown>)[key];
+    }
+  }
+}
+
+const probe = {
+  name: 'probe',
+  description: 'Test tool.',
+  inputSchema: { type: 'object' as const },
+  execute: () => 'ok',
+};
+
+describe('modelContext handoff', () => {
+  it('prefers document.modelContext and never reads the navigator getter', () => {
+    const doc = fakeContext();
+    const legacy = fakeContext();
+    let navigatorReads = 0;
+    const navigator = {
+      get modelContext() {
+        navigatorReads += 1;
+        return legacy;
+      },
+    };
+    withGlobals({ document: { modelContext: doc }, navigator }, () => {
+      registerTool(probe)();
+    });
+    expect(doc.registered).toEqual(['probe']);
+    expect(doc.unregistered).toEqual(['probe']);
+    expect(legacy.registered).toEqual([]);
+    expect(navigatorReads).toBe(0);
+  });
+
+  it('falls back to navigator.modelContext for hosts that predate document', () => {
+    const legacy = fakeContext();
+    withGlobals({ document: {}, navigator: { modelContext: legacy } }, () => {
+      registerTool(probe)();
+    });
+    expect(legacy.registered).toEqual(['probe']);
+    expect(legacy.unregistered).toEqual(['probe']);
+  });
+
+  it('registers once when document and navigator expose the same context', () => {
+    const shared = fakeContext();
+    withGlobals({ document: { modelContext: shared }, navigator: { modelContext: shared } }, () => {
+      registerTool(probe)();
+    });
+    expect(shared.registered).toEqual(['probe']);
+    expect(shared.unregistered).toEqual(['probe']);
+  });
+});
+
 describe('tool round-trips', () => {
   it('reads the snapshot, adds by tool, and checks off by tool', async () => {
     const app = new TodoList();

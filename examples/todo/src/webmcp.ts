@@ -82,9 +82,11 @@ function modelContexts(): ModelContext[] {
     document?: { modelContext?: ModelContext };
     navigator?: { modelContext?: ModelContext };
   };
-  return [scope.document?.modelContext, scope.navigator?.modelContext].filter(
-    (ctx): ctx is ModelContext => ctx != null,
-  );
+  // The May 2026 draft moved the getter to Document. Navigator is read only
+  // for hosts that predate it: polyfills warn on that read, and may expose
+  // one context on both, which would register every tool twice.
+  const ctx = scope.document?.modelContext ?? scope.navigator?.modelContext;
+  return ctx == null ? [] : [ctx];
 }
 
 function failure(text: string): ToolFailure {
