@@ -1,0 +1,243 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:root {
+  color-scheme: dark;
+  --felt: #1f7a41;
+  --felt-dark: #145c2f;
+  --slot: rgba(255, 255, 255, 0.12);
+  --card-bg: #fdfdfb;
+  --card-red: #c0392b;
+  --card-black: #2c3e50;
+  --text-light: #f4f7f4;
+  /* Vertical offset between fanned tableau cards. */
+  --fan: 1.6rem;
+  /* Focus ring: gold reads on the felt and on the light buttons alike. */
+  --focus: #facc15;
+}
+
+/* The glasses draw the browser's default focus ring, and the box shown on a
+ * press, as a white rectangle: their additive display drops the ring's dark
+ * half. Nothing keeps the default ring, so a container that takes focus only
+ * to scroll shows none, and controls draw the accent instead. Plain `:focus`,
+ * not `:focus-visible`, which does not reliably fire without a keyboard. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus {
+  outline: none;
+}
+
+button:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Inset, because the next card in a column covers all but a card's top edge. */
+[role='button']:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: start center;
+  background: radial-gradient(circle at 50% 0%, var(--felt), var(--felt-dark));
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text-light);
+}
+
+#app {
+  width: min(96vw, 760px);
+  padding: 1rem;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+h1 {
+  font-size: 2.4rem;
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+button {
+  background: #f4f7f4;
+  color: var(--felt-dark);
+  border: 0;
+  border-radius: 6px;
+  padding: 0.55rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #e2e8e2;
+}
+
+.hint {
+  color: rgba(244, 247, 244, 0.75);
+  font-size: 0.9rem;
+}
+
+.board {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.stock-waste,
+.foundations {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.pile {
+  position: relative;
+}
+
+.card {
+  width: clamp(3rem, 11vw, 4.4rem);
+  aspect-ratio: 5 / 7;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  user-select: none;
+}
+
+/* A card in flight passes over the piles between where it was and where it lands. */
+.card.flying {
+  position: relative;
+  z-index: 10;
+}
+
+/* A foundation's top card sits on what it covers; both are positioned so the
+ * top one, later in the DOM, paints above. */
+.foundation .card {
+  position: relative;
+}
+
+.foundation .card.under {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.card.slot {
+  background: var(--slot);
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.4rem;
+}
+
+.card.back {
+  background: repeating-linear-gradient(45deg, #2b5fa3 0 8px, #23508c 8px 16px);
+  border: 2px solid #edf2fb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.card.face {
+  background: var(--card-bg);
+  border: 1px solid #d7d7d0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  position: relative;
+  cursor: pointer;
+}
+
+.card.face.red {
+  color: var(--card-red);
+}
+
+.card.face.black {
+  color: var(--card-black);
+}
+
+.card .corner {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: clamp(0.7rem, 2.6vw, 0.95rem);
+  line-height: 1;
+}
+
+.card .pip {
+  font-size: clamp(1.1rem, 4.5vw, 1.7rem);
+}
+
+.stock {
+  cursor: pointer;
+}
+
+.stock .count {
+  position: absolute;
+  bottom: -1.2rem;
+  width: 100%;
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(244, 247, 244, 0.75);
+}
+
+.tableau {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.column {
+  min-height: 8rem;
+}
+
+/*
+ * Fanned cards stay in normal flow so a column's height tracks the pile. Vertical margin percentages resolve
+ * against the column's width, and a full-width 5:7 card is 140% of it tall.
+ */
+.column .card {
+  position: relative;
+  width: 100%;
+}
+
+.column .card + .card {
+  margin-top: calc(var(--fan) - 140%);
+}
+
+.status {
+  font-weight: 700;
+  text-align: center;
+}
+
+.status:empty {
+  display: none;
+}

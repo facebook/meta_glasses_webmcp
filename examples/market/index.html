@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      Agent hosts read the title and description as context, so they carry the
+      standing instructions that hurt most when missing. public/agent.md is the
+      long-form persona.
+    -->
+    <title>Local Market — the shopper is watching the screen, not listening to you</title>
+    <meta
+      name="description"
+      content="A grocery store you shop by voice. Adding an item walks to its aisle, scrolls it into the middle of the screen and highlights it going in, so the shopper can SEE the cart being built — never narrate a list you could add instead. Call shopping_get_state first: it returns every product id the store stocks, so you can go straight to adding. One shopping_add_to_cart call per product, in the order you want them to appear. Finish by navigating to the cart so the total is on screen. Reply in one short sentence."
+    />
+  </head>
+  <body>
+    <div id="device">
+      <header id="chrome"></header>
+      <main id="app"></main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

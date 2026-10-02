@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solitaire — Klondike, draw-1, played by hand or with the solitaire_* tools</title>
+  </head>
+  <body>
+    <main id="app">
+      <header>
+        <h1>Solitaire</h1>
+        <div class="controls">
+          <button id="draw" type="button">Draw</button>
+          <button id="new-game" type="button">New Game</button>
+        </div>
+      </header>
+      <p class="hint">Click the stock to draw, click a card to auto-play it — or let a voice agent play. Klondike, draw-1.</p>
+      <div id="board" class="board" aria-label="Solitaire board"></div>
+      <p id="status" class="status" role="status"></p>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
