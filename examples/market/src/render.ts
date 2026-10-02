@@ -51,7 +51,7 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 
 /** A product photo. Decorative copies pass an empty alt so the name is not read twice. */
 const photo = (id: string, alt: string) =>
-  `<img src="${imageFor(id)}" alt="${esc(alt)}" width="210" height="210" decoding="async" />`;
+  `<img src="${imageFor(id)}" alt="${esc(alt)}" width="210" height="210" />`;
 
 export function createRenderer(store: Store, view: View, handlers: Handlers) {
   const device = document.getElementById('device') as HTMLElement;

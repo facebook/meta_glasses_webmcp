@@ -2,8 +2,8 @@
 
 Standard Klondike solitaire, draw-1, built as a `glasses_webmcp` example. Play
 with the mouse, or let a voice-driven agent play through tools — both drive
-the same game. Cards are drawn with CSS and Unicode suit symbols, so the
-sample ships no image assets.
+the same game. Cards are drawn with CSS and inline SVG suits, so the sample
+ships no image assets and needs no font with suit symbols.
 
 Tool registration goes through the small local registry in `src/webmcp.ts`,
 so the page runs as an ordinary game with no agent host present and the tools

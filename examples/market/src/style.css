@@ -484,6 +484,9 @@ a {
   border-radius: inherit;
   pointer-events: none;
   opacity: 0;
+  /* Behind the tile's content, so no layer is ever composited over the photo
+   * and text; the rings and glows sit outside the tile's edge anyway. */
+  z-index: -1;
 }
 
 .tile.adding::before,

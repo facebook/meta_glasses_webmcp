@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { type Card, type GameState, type Suit, cardCode, isRed, isWon, rankLabel, suitSymbol } from './engine.ts';
+import { type Card, type GameState, type Suit, cardCode, isRed, isWon, rankLabel } from './engine.ts';
 
 const RANK_NAMES = ['', 'ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king'];
 const SUIT_NAMES: Record<Suit, string> = { S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' };
@@ -41,6 +41,26 @@ function restoreFocus(board: HTMLElement, key: string | undefined): void {
   el?.focus({ preventScroll: true });
 }
 
+// The glasses' fonts have no suit symbols and draw the Unicode ones as boxes,
+// so each suit is drawn as a shape on a 100x100 grid instead.
+const SUIT_SHAPES: Record<Suit, string> = {
+  H: '<path d="M50 92C20 70 6 52 6 32 6 17 17 7 30 7c9 0 16 5 20 13 4-8 11-13 20-13 13 0 24 10 24 25 0 20-14 38-44 60Z"/>',
+  D: '<path d="M50 4 88 50 50 96 12 50Z"/>',
+  S: '<path d="M50 4C80 28 94 44 94 60c0 14-11 22-23 22-8 0-15-4-18-10 1 9 4 16 11 22H36c7-6 10-13 11-22-3 6-10 10-18 10C17 82 6 74 6 60 6 44 20 28 50 4Z"/>',
+  C:
+    '<circle cx="50" cy="30" r="20"/><circle cx="28" cy="60" r="20"/><circle cx="72" cy="60" r="20"/>' +
+    '<circle cx="50" cy="52" r="10"/><path d="M46 58C46 76 42 86 34 94H66C58 86 54 76 54 58Z"/>',
+};
+
+function suitIcon(suit: Suit): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'suit');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = SUIT_SHAPES[suit];
+  return svg;
+}
+
 function cardEl(card: Card): HTMLElement {
   const el = document.createElement('div');
   el.className = 'card';
@@ -52,10 +72,10 @@ function cardEl(card: Card): HTMLElement {
   el.dataset.code = cardCode(card);
   const corner = document.createElement('span');
   corner.className = 'corner';
-  corner.textContent = `${rankLabel(card.rank)}${suitSymbol(card.suit)}`;
+  corner.append(rankLabel(card.rank), suitIcon(card.suit));
   const pip = document.createElement('span');
   pip.className = 'pip';
-  pip.textContent = suitSymbol(card.suit);
+  pip.append(suitIcon(card.suit));
   el.append(corner, pip);
   return el;
 }

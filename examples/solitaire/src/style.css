@@ -196,6 +196,19 @@ button:hover {
   font-size: clamp(1.1rem, 4.5vw, 1.7rem);
 }
 
+.card .suit {
+  width: 0.85em;
+  height: 0.85em;
+  fill: currentColor;
+  vertical-align: -0.05em;
+}
+
+.card .pip .suit {
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+}
+
 .stock {
   cursor: pointer;
 }
