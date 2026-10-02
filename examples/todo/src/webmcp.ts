@@ -13,9 +13,8 @@
 // and when none exists yet, an in-page `__webmcp` surface is installed with
 // the standard shape (`registerTool`/`unregisterTool`/`listTools`/
 // `getTools`/`callTool` plus `toolchange` events) so hosts arriving later,
-// DevTools, and tests all see the same tools. The `glasses_webmcp` library
-// will own this bridging when it lands; until then this module holds the
-// contract locally with zero runtime dependencies.
+// DevTools, and tests all see the same tools. The module holds that contract
+// locally, with zero runtime dependencies.
 
 export interface ToolAnnotations {
   readOnlyHint?: boolean;

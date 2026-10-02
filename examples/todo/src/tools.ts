@@ -7,8 +7,8 @@
  */
 
 // Agent tool surface: the shared TodoList exposed as todo_* tools through
-// the local registry in webmcp.ts, which the host library will replace with
-// a real bridge when it lands. The page runs as an ordinary app meanwhile.
+// the local registry in webmcp.ts. The page runs as an ordinary app with or
+// without an agent host present.
 //
 // Reads report, writes acknowledge: todo_read_list returns the snapshot and
 // the add call returns its fresh id; every other write answers "ok".
