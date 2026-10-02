@@ -28,17 +28,11 @@ jobs:
       - run: yarn install
       # A relative base keeps the built asset URLs independent of where the
       # site is served, so a rename or a fork does not break the demo.
-      - name: Build the examples
-        run: |
-          for example in todo market solitaire; do
-            yarn workspace "example-$example" build --base=./
-          done
+      - run: yarn workspace example-todo build --base=./
       - name: Assemble the site
         run: |
-          for example in todo market solitaire; do
-            mkdir -p "_site/examples/$example"
-            cp -r "examples/$example/dist/." "_site/examples/$example/"
-          done
+          mkdir -p _site/examples/todo
+          cp -r examples/todo/dist/. _site/examples/todo/
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <html lang="en">
@@ -66,8 +60,6 @@ jobs:
               </p>
               <ul>
                 <li><a href="./examples/todo/">Todo example</a> &mdash; a running demo</li>
-                <li><a href="./examples/market/">Market example</a> &mdash; a running demo</li>
-                <li><a href="./examples/solitaire/">Solitaire example</a> &mdash; a running demo</li>
                 <li><a href="https://github.com/facebook/meta_glasses_webmcp">Source on GitHub</a></li>
                 <li>
                   <a href="https://wearables.developer.meta.com/docs/develop/webapps">
