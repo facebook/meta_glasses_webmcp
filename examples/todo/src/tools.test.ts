@@ -29,9 +29,9 @@ interface Snapshot {
   summary: string;
 }
 
-interface UnknownSurface {
-  listTools?: () => Array<{ name: string }>;
-  callTool?: (name: string, args: unknown) => Promise<unknown>;
+interface CapturedTool {
+  name: string;
+  execute: (args: unknown) => unknown | Promise<unknown>;
 }
 
 async function read(): Promise<Snapshot> {
@@ -50,35 +50,31 @@ describe('tool registration', () => {
     expect(names).toHaveLength(11);
   });
 
-  it('publishes the tools on the in-page host surface', async () => {
-    registerTodoTools(new TodoList());
-    const surface = (globalThis as { __webmcp?: UnknownSurface }).__webmcp;
-    expect(surface).toBeDefined();
-    const listed = surface?.listTools?.() ?? [];
-    expect(listed.map((tool) => tool.name)[0]).toBe('todo_read_list');
-    expect(listed).toHaveLength(11);
-    // Snapshots carry no handler.
-    expect(listed.every((tool) => !('handler' in tool) && !('execute' in tool))).toBe(true);
-    const answer = (await surface?.callTool?.('todo_read_list', {})) as string;
-    expect(JSON.parse(answer).items.length).toBeGreaterThan(0);
-  });
-
-  it('fans out to a host-owned surface when one exists', () => {
-    const seen: string[] = [];
-    const scope = globalThis as { __webmcp?: unknown };
-    scope.__webmcp = {
-      registerTool: (def: { name: string }) => {
-        seen.push(def.name);
+  it('publishes the tools to document.modelContext', async () => {
+    const ctx = fakeContext();
+    const seen: CapturedTool[] = [];
+    withGlobals(
+      {
+        document: {
+          modelContext: {
+            registerTool: (tool: CapturedTool) => {
+              ctx.registerTool(tool);
+              seen.push(tool);
+            },
+            unregisterTool: (name: string) => ctx.unregisterTool(name),
+          },
+        },
       },
-      unregisterTool: () => {},
-    };
-    try {
-      registerTodoTools(new TodoList());
-      expect(seen).toHaveLength(11);
-      expect(seen[0]).toBe('todo_read_list');
-    } finally {
-      delete scope.__webmcp;
-    }
+      () => {
+        registerTodoTools(new TodoList());
+      },
+    );
+    expect(ctx.registered[0]).toBe('todo_read_list');
+    expect(ctx.registered).toHaveLength(11);
+    // The host gets a live handler.
+    expect(seen.every((tool) => typeof tool.execute === 'function')).toBe(true);
+    const answer = (await seen[0].execute({})) as string;
+    expect(JSON.parse(answer).items.length).toBeGreaterThan(0);
   });
 
   it('refuses duplicate registration', () => {
@@ -133,42 +129,25 @@ const probe = {
   execute: () => 'ok',
 };
 
-describe('modelContext handoff', () => {
-  it('prefers document.modelContext and never reads the navigator getter', () => {
-    const doc = fakeContext();
-    const legacy = fakeContext();
-    let navigatorReads = 0;
-    const navigator = {
-      get modelContext() {
-        navigatorReads += 1;
-        return legacy;
-      },
-    };
-    withGlobals({ document: { modelContext: doc }, navigator }, () => {
+describe('document.modelContext handoff', () => {
+  it('registers and unregisters with document.modelContext', () => {
+    const ctx = fakeContext();
+    withGlobals({ document: { modelContext: ctx } }, () => {
       registerTool(probe)();
     });
-    expect(doc.registered).toEqual(['probe']);
-    expect(doc.unregistered).toEqual(['probe']);
-    expect(legacy.registered).toEqual([]);
-    expect(navigatorReads).toBe(0);
+    expect(ctx.registered).toEqual(['probe']);
+    expect(ctx.unregistered).toEqual(['probe']);
   });
 
-  it('falls back to navigator.modelContext for hosts that predate document', () => {
-    const legacy = fakeContext();
-    withGlobals({ document: {}, navigator: { modelContext: legacy } }, () => {
-      registerTool(probe)();
+  it('registers locally when no host context exists', () => {
+    let names: string[] = [];
+    withGlobals({ document: {} }, () => {
+      const unregister = registerTool(probe);
+      names = getTools().map((tool) => tool.name);
+      unregister();
     });
-    expect(legacy.registered).toEqual(['probe']);
-    expect(legacy.unregistered).toEqual(['probe']);
-  });
-
-  it('registers once when document and navigator expose the same context', () => {
-    const shared = fakeContext();
-    withGlobals({ document: { modelContext: shared }, navigator: { modelContext: shared } }, () => {
-      registerTool(probe)();
-    });
-    expect(shared.registered).toEqual(['probe']);
-    expect(shared.unregistered).toEqual(['probe']);
+    expect(names).toEqual(['probe']);
+    expect(getTools()).toEqual([]);
   });
 });
 
@@ -231,26 +210,6 @@ describe('tool round-trips', () => {
     expect(answer.isError).toBe(true);
   });
 
-  it('replays the tool set to a host that arrives after registration', () => {
-    registerTodoTools(new TodoList());
-    const scope = globalThis as { __webmcp?: unknown };
-    const seen: string[] = [];
-    // A real host replacing the in-page surface after the page registered.
-    scope.__webmcp = {
-      registerTool: (tool: { name: string }) => void seen.push(tool.name),
-      unregisterTool: () => {},
-    };
-    registerTool({
-      name: 'late_tool',
-      description: 'registered after the host arrived',
-      inputSchema: { type: 'object', properties: {} },
-      execute: async () => 'ok',
-    });
-    expect(seen).toContain('todo_read_list');
-    expect(seen).toContain('late_tool');
-    delete scope.__webmcp;
-  });
-
   // Stripping brackets off each chunk would turn the reference "[a]" into "a",
   // which exact-matches the other item and silently reorders the wrong one.
   it('resolves a bracketed title reference to the bracketed item', async () => {
@@ -287,13 +246,6 @@ describe('tool round-trips', () => {
     };
     expect(answer.isError).toBe(true);
     expect(answer.content[0].text).toContain('kaboom');
-  });
-
-  it('enforces required inputs through the in-page surface too', async () => {
-    registerTodoTools(new TodoList());
-    const surface = (globalThis as { __webmcp?: UnknownSurface }).__webmcp;
-    const answer = (await surface?.callTool?.('todo_add_item', {})) as { isError: boolean };
-    expect(answer.isError).toBe(true);
   });
 
   it('treats an explicit null required input as missing', async () => {

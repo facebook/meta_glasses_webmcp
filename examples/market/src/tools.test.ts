@@ -63,10 +63,36 @@ describe('registration', () => {
     expect(getTools().every((t) => t.description.length > 40 && t.inputSchema.type === 'object')).toBe(true);
   });
 
-  it('publishes on the in-page surface', async () => {
-    host();
-    const surface = (globalThis as { __webmcp?: { callTool: (n: string, a: unknown) => Promise<unknown> } }).__webmcp;
-    const state = JSON.parse((await surface!.callTool('shopping_get_state', {})) as string);
+// Node has no document, so the fake host context is installed for one call.
+function withDocument(document: unknown, run: () => void): void {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  Object.defineProperty(globalThis, 'document', { value: document, configurable: true, writable: true });
+  try {
+    run();
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'document', descriptor);
+    else delete (globalThis as Record<string, unknown>).document;
+  }
+}
+
+  it('publishes tools to document.modelContext', async () => {
+    const registered = new Map<string, { execute: (args: unknown) => unknown | Promise<unknown> }>();
+    const document = {
+      modelContext: {
+        registerTool: (tool: { name: string; execute: (args: unknown) => unknown | Promise<unknown> }) => {
+          registered.set(tool.name, tool);
+        },
+        unregisterTool: (name: string) => {
+          registered.delete(name);
+        },
+      },
+    };
+    withDocument(document, () => {
+      host();
+    });
+    expect(registered.size).toBe(10);
+    expect([...registered.keys()][0]).toBe('shopping_get_state');
+    const state = JSON.parse((await registered.get('shopping_get_state')!.execute({})) as string);
     expect(state.store).toBe('Local Market');
   });
 });
