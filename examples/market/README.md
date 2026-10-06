@@ -31,7 +31,8 @@ Then open the URL Vite prints.
 Pick an aisle, then a product, and press **Add**. The cart pill in the header
 counts units; open it to change quantities with the steppers or place the
 order. The product photos in `public/products/` are AI-generated (made with
-Google AI), and each file carries that label in its metadata.
+Meta AI), and each file carries that label in its metadata (IPTC
+`DigitalSourceType` = `trainedAlgorithmicMedia`, credit "Made with Meta AI").
 
 ## What it demonstrates
 
