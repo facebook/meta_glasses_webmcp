@@ -95,6 +95,27 @@ function withDocument(document: unknown, run: () => void): void {
     const state = JSON.parse((await registered.get('shopping_get_state')!.execute({})) as string);
     expect(state.store).toBe('Local Market');
   });
+
+  it('clearTools unpublishes tools from document.modelContext', () => {
+    const registered = new Map<string, unknown>();
+    const document = {
+      modelContext: {
+        registerTool: (tool: { name: string }) => {
+          registered.set(tool.name, tool);
+        },
+        unregisterTool: (name: string) => {
+          registered.delete(name);
+        },
+      },
+    };
+    withDocument(document, () => {
+      host();
+      expect(registered.size).toBe(10);
+      clearTools();
+    });
+    expect(registered.size).toBe(0);
+    expect(getTools()).toHaveLength(0);
+  });
 });
 
 describe('catalogue', () => {

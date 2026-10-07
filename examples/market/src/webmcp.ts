@@ -127,8 +127,9 @@ export function getTools(): ToolDefinition[] {
   return [...tools.values()];
 }
 
-/** Drop all local registrations. */
+/** Drop all local registrations, unpublishing each from the host first. */
 export function clearTools(): void {
+  for (const name of tools.keys()) unpublishFromContext(name);
   tools.clear();
 }
 
