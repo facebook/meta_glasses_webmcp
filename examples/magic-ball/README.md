@@ -4,12 +4,12 @@ A twenty-sided die tumbling through purple liquid inside a sealed sphere. Ask it
 agent's four-word verdict is the face that lands against the window. Built as a
 `glasses_webmcp` example.
 
-Scan the QR code with your phone to install it on Meta Ray-Ban Display, or click it to open the
-web app in your browser.
+Scan the QR code with your phone to install it on Meta Ray-Ban Display, or click the animation to
+open the web app in your browser.
 
 | Sample | Install |
 | :---: | :---: |
-| ![Magic Ball demo: asked whether it will rain on a picnic tomorrow, the die tumbles and lands showing Pack an umbrella; asked what to have for lunch, it lands showing Something fried](demo.gif) | [![QR code that installs the Magic Ball example on Meta Ray-Ban Display](install-qr.svg)](https://facebook.github.io/meta_glasses_webmcp/examples/magic-ball/) |
+| [![Magic Ball demo: asked whether it will rain on a picnic tomorrow, the die tumbles and lands showing Pack an umbrella; asked what to have for lunch, it lands showing Something fried](demo.gif)](https://facebook.github.io/meta_glasses_webmcp/examples/magic-ball/) | ![QR code that installs the Magic Ball example on Meta Ray-Ban Display](install-qr.svg) |
 
 ## Quick start
 

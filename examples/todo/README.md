@@ -14,7 +14,7 @@ stay drivable in tests.
 
 | Sample | Install |
 | :---: | :---: |
-| ![Agentic Todo demo: asked to note the returned books and a package to ship by 5 today, the assistant checks off the books and adds the package due today](demo.gif) | [![QR code that installs the Agentic Todo example on Meta Ray-Ban Display](install-qr.svg)](https://facebook.github.io/meta_glasses_webmcp/examples/todo/) |
+| [![Agentic Todo demo: asked to note the returned books and a package to ship by 5 today, the assistant checks off the books and adds the package due today](demo.gif)](https://facebook.github.io/meta_glasses_webmcp/examples/todo/) | ![QR code that installs the Agentic Todo example on Meta Ray-Ban Display](install-qr.svg) |
 
 ## Run the sample
 

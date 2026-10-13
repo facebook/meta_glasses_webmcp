@@ -14,7 +14,7 @@ stay drivable in tests.
 
 | Sample | Install |
 | :---: | :---: |
-| ![Local Market demo: asked to add ingredients for lasagna, the assistant adds lasagna noodles, ground beef, two cans of crushed tomatoes, ricotta and mozzarella, then opens the cart at $27.74](demo.gif) | [![QR code that installs the Local Market example on Meta Ray-Ban Display](install-qr.svg)](https://facebook.github.io/meta_glasses_webmcp/examples/market/) |
+| [![Local Market demo: asked to add ingredients for lasagna, the assistant adds lasagna noodles, ground beef, two cans of crushed tomatoes, ricotta and mozzarella, then opens the cart at $27.74](demo.gif)](https://facebook.github.io/meta_glasses_webmcp/examples/market/) | ![QR code that installs the Local Market example on Meta Ray-Ban Display](install-qr.svg) |
 
 ## Run the sample
 

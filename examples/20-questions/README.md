@@ -7,12 +7,12 @@ Unlike the other game examples, this page has no engine to beat you with — it 
 secret. It is a scoreboard and an orb: it counts questions, keeps the transcript, and flashes what
 was just learned. All the difficulty is in the tool contract.
 
-Scan the QR code with your phone to install it on Meta Ray-Ban Display, or click it to open the
-web app in your browser.
+Scan the QR code with your phone to install it on Meta Ray-Ban Display, or click the animation to
+open the web app in your browser.
 
 | Sample | Install |
 | :---: | :---: |
-| ![20 Questions demo: told it is alive, not a pet, and can fly, the agent guesses an owl and is right](demo.gif) | [![QR code that installs the 20 Questions example on Meta Ray-Ban Display](install-qr.svg)](https://facebook.github.io/meta_glasses_webmcp/examples/20-questions/) |
+| [![20 Questions demo: told it is alive, not a pet, and can fly, the agent guesses an owl and is right](demo.gif)](https://facebook.github.io/meta_glasses_webmcp/examples/20-questions/) | ![QR code that installs the 20 Questions example on Meta Ray-Ban Display](install-qr.svg) |
 
 ## Quick start
 

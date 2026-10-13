@@ -11,7 +11,7 @@ stay drivable in tests.
 
 | Sample | Install |
 | :---: | :---: |
-| ![Solitaire demo: asked to play through the 3 of hearts, the assistant plays the ace and 2 of hearts, moves the 2 of clubs onto the 3 of diamonds to free the 3 of hearts, and plays it](demo.gif) | [![QR code that installs the Solitaire example on Meta Ray-Ban Display](install-qr.svg)](https://facebook.github.io/meta_glasses_webmcp/examples/solitaire/) |
+| [![Solitaire demo: asked to play through the 3 of hearts, the assistant plays the ace and 2 of hearts, moves the 2 of clubs onto the 3 of diamonds to free the 3 of hearts, and plays it](demo.gif)](https://facebook.github.io/meta_glasses_webmcp/examples/solitaire/) | ![QR code that installs the Solitaire example on Meta Ray-Ban Display](install-qr.svg) |
 
 ## Run the sample
 

@@ -11,12 +11,12 @@ Same four cards, same two minutes, same banned-word rule on both sides. At full 
 halves are compared — the question the game actually asks is whether you or the model is the
 better clue-giver.
 
-Scan the QR code with your phone to install it on Meta Ray-Ban Display, or click it to open the
-web app in your browser.
+Scan the QR code with your phone to install it on Meta Ray-Ban Display, or click the animation to
+open the web app in your browser.
 
 | Sample | Install |
 | :---: | :---: |
-| ![Password demo: the round opens on SNORKEL; clued with biting on it to look at fish with your face in the sea, the agent guesses snorkel, then gets FLIPPER from floppy shoes you wear at the beach to kick faster](demo.gif) | [![QR code that installs the Password example on Meta Ray-Ban Display](install-qr.svg)](https://facebook.github.io/meta_glasses_webmcp/examples/password/) |
+| [![Password demo: the round opens on SNORKEL; clued with biting on it to look at fish with your face in the sea, the agent guesses snorkel, then gets FLIPPER from floppy shoes you wear at the beach to kick faster](demo.gif)](https://facebook.github.io/meta_glasses_webmcp/examples/password/) | ![QR code that installs the Password example on Meta Ray-Ban Display](install-qr.svg) |
 
 ## Quick start
 
