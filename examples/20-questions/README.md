@@ -79,12 +79,18 @@ apologise to the user about the scoreboard.
 This example is tuned for a wearable-class GPU: a tight thermal and power budget,
 and no headroom for per-frame re-rasterisation. The rules that fell out of profiling it:
 
-- **Animate only `transform` and `opacity`.** Those stay on the compositor. The
-  caption's fly-in originally animated `filter: blur()` alongside `scale`, which
-  re-rasters the text every frame; dropping the blur is invisible at speed.
+- **Keep anything translucent off its own compositor layer.** The Meta Ray-Ban
+  Display WebView composites a promoted layer without alpha: an element that
+  animates `opacity` or `transform` shows on an opaque black box for as long as
+  it animates, and anything overlapping it is promoted too. So every fade and
+  the caption's fly-in animate registered custom properties (`--a`, `--fly-a`,
+  `--fly-s`) that feed `opacity` and `transform`, which runs on the main thread
+  and paints in place. The orb does not float and the sheen does not sweep: a
+  perpetual transform animation would keep the whole orb on layers, and any
+  other way of moving it would re-raster it every frame forever.
 - **Never animate a gradient.** The aura used to cross-fade its `background`
   between two radial gradients. Swapping the gradient instantly underneath a
-  fading `opacity` is pixel-identical and free.
+  fade is pixel-identical and cheaper.
 - **Size the one layer that must re-raster to what it actually covers.** Moving
   a mask stop cannot be composited, so the fill genuinely repaints while it
   rises — but only the sphere needs to. Shrinking that layer from the full
@@ -94,8 +100,7 @@ and no headroom for per-frame re-rasterisation. The rules that fell out of profi
   For a pure-white source `screen` and normal source-over are algebraically the
   same — `(1-a)·Cb + a` — so it was pure cost.
 - **Don't hint what you don't need.** `will-change` promotes a layer for the
-  page's whole life; on a memory-tight device that is worse than letting the
-  browser promote for the 450ms an opacity transition actually runs.
+  page's whole life, which on the glasses also means a black box behind it.
 - **Defer bitmaps you cannot use yet.** The end-of-round art is fetched when a
   round starts rather than at load, keeping it off the critical path.
 - **Reveal with a path, not with frames.** The entrance spirals the galaxy out
@@ -106,7 +111,7 @@ and no headroom for per-frame re-rasterisation. The rules that fell out of profi
   Against the megabytes a sprite sheet of the same reveal would cost, and with
   no new bitmap at all. It re-rasters like the waterline does, so it gets the
   same treatment: the 330 box, and the sphere clip. Once bloomed it fades to
-  the ordinary full orb on opacity alone and the layer is removed.
+  the ordinary full orb on `--a` and the layer is removed.
 - **Count the strands before you draw them.** Tracing only the brightest pair
   read as two fat ribbons, nothing like the picture — and two arms sweeping
   ~100 degrees have to open to a 528px stroke to blanket the disc, which is
@@ -139,10 +144,11 @@ the ranking clear):
 | before | 1171 | 473 ms |
 | after | 444 | ~170 ms |
 
-Idle costs no raster at all in either version — the float and sheen are pure
-compositor transforms. **These numbers come from desktop software rasterisation,
-not from wearable silicon.** They show the work removed, not the frame rate you will
-see on the device; the only way to get that is to profile on the glasses.
+Idle costs no raster at all: with the float and the sweep gone, nothing moves
+between answers. **These numbers come from desktop software rasterisation,
+not from wearable silicon,** and predate moving the fades onto custom properties.
+They show the work removed, not the frame rate you will see on the device; the
+only way to get that is to profile on the glasses.
 
 ## MCP tools
 

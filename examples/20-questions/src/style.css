@@ -47,19 +47,31 @@
   }
 
   /* aura behind the orb — hue tracks the human's last answer, never shows text */
+  /* Every fade over the orb runs on this registered number rather than on
+     `opacity` itself. An opacity animation gets its own compositor layer, and
+     the glasses WebView composites such layers without alpha: the element
+     shows as an opaque black box over the orb for as long as it animates.
+     A custom-property animation runs on the main thread, so the element is
+     painted in place and blends correctly. */
+  @property --a {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 1;
+  }
+
   #aura {
     position: absolute; left: 50%; top: 41%;
     width: 470px; height: 470px; margin: -235px 0 0 -235px;
     border-radius: 50%;
     background: transparent;
-    opacity: 0;                       /* no ambient glow — black means black */
-    /* Only opacity is transitioned. Animating `background` cross-fades two
-       gradients, which re-rasters the layer every frame; swapping it instantly
-       under a fading opacity looks identical and composites for free. */
-    transition: opacity .45s ease;
+    --a: 0;                           /* no ambient glow — black means black */
+    opacity: var(--a);
+    /* Only the fade is transitioned. Animating `background` cross-fades two
+       gradients; swapping it instantly under a fading opacity looks identical. */
+    transition: --a .45s ease;
     pointer-events: none;
   }
-  #aura.yes, #aura.no, #aura.gold { opacity: 1; }
+  #aura.yes, #aura.no, #aura.gold { --a: 1; }
   #aura.yes { background: radial-gradient(circle, rgba(111,227,176,.55) 0%, rgba(111,227,176,.20) 45%, transparent 70%); }
   #aura.no  { background: radial-gradient(circle, rgba(255,123,138,.55) 0%, rgba(255,123,138,.20) 45%, transparent 70%); }
   #aura.gold{ background: radial-gradient(circle, rgba(217,178,106,.55) 0%, rgba(217,178,106,.20) 45%, transparent 70%); }
@@ -67,10 +79,14 @@
   /* The orb is two stacked 500x500 layers, centred in the 600 canvas.
      #orb is the base art (full / empty / lose) and #orbFill is the full
      galaxy clipped to a band that grows up the sphere, one twentieth per
-     question. Both live inside #scene so the float never desyncs them. */
+     question. Both live inside #scene.
+
+     The orb does not float. A perpetual transform animation would put #scene
+     on its own compositor layer and push everything over it onto layers too,
+     which the glasses WebView draws without alpha; animating it any other way
+     would re-raster the orb every frame for as long as the page is open. */
   #scene {
     position: absolute; inset: 0;
-    animation: float 8s ease-in-out infinite;
   }
   #orb {
     position: absolute; inset: 0;
@@ -106,8 +122,9 @@
     background-position: -85px -32.5px;
     background-repeat: no-repeat;
     --fill-y: 402px;                            /* empty: waterline at the base */
-    transition: --fill-y .9s cubic-bezier(.35,0,.2,1), opacity .5s ease;
-    opacity: 0;
+    transition: --fill-y .9s cubic-bezier(.35,0,.2,1), --a .5s ease;
+    --a: 0;
+    opacity: var(--a);
     /* Two masks, intersected:
        1. The sphere. The galaxy art carries a soft halo around the glass, and
           a hard horizontal band would drag that halo out as a rectangle,
@@ -125,7 +142,6 @@
     -webkit-mask-composite: source-in;
     mask-composite: intersect;
   }
-  @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
 
   /*
    * One-shot entrance: the galaxy spirals out along its own arms until it has
@@ -137,7 +153,7 @@
    * is the most expensive thing that could go here, so the soft edge comes
    * from three concentric strokes at stepped greys instead (see entrance.ts).
    *
-   * The hand-off is the cheap half — opacity only, straight on the compositor.
+   * The hand-off is the cheap half: a fade on --a.
    */
   /* The nominal stroke width of the arms. Registered so it can be animated as
      a length; it has to inherit, because it is animated on the <svg> and read
@@ -160,7 +176,8 @@
        (300, 247.5) in canvas space, which is the middle of this 330 box, and
        155 lands the cut on the glass edge rather than out in the halo. */
     clip-path: circle(155px at 165px 165px);
-    transition: opacity .5s ease;
+    opacity: var(--a);
+    transition: --a .5s ease;
   }
   /* --f is the layer's share of the nominal width: 1 for the widest, dimmest
      skirt down to .68 for the white core. Set per path in entrance.ts. */
@@ -174,12 +191,13 @@
      curve read as a single expanding blob. */
   #orbIntro.go { animation: spiralBloom 1.8s cubic-bezier(.5,0,.75,.25) forwards; }
   #orbIntro.go path { animation: spiralDraw 1.8s cubic-bezier(.32,0,.35,1) forwards; }
-  #orbIntro.handoff { opacity: 0; }
+  #orbIntro.handoff { --a: 0; }
   @keyframes spiralDraw { to { stroke-dashoffset: 0; } }
   /* 240px is what it takes to close the last gap across six arms; see entrance.ts. */
   @keyframes spiralBloom { from { --spiral-w: 28px; } to { --spiral-w: 240px; } }
 
-  /* light sweep across the glass */
+  /* A fixed glint on the glass. It used to sweep round on a transform
+     animation, which the glasses WebView composites as an opaque black disc. */
   #sheen {
     position: absolute; left: 50%; top: 41%;
     width: 358px; height: 358px; margin: -179px 0 0 -179px;
@@ -192,10 +210,8 @@
        pixels. Dropping it removes a render surface the compositor would
        otherwise maintain forever, which is the kind of always-on cost that
        matters on a wearable. */
-    animation: spin 14s linear infinite;
     pointer-events: none;
   }
-  @keyframes spin { to { transform: rotate(360deg) } }
 
   /* ---------- question counter ---------- */
   #hud {
@@ -216,20 +232,33 @@
   #hud.spent .n { color: var(--no, #ff7b8a); }
 
   /* ---------- yes / no flying into the orb ---------- */
+  /* The fly-in animates these two registered numbers rather than opacity and
+     transform, for the same reason as --a: a compositor animation would show
+     the caption on an opaque black box on the glasses. */
+  @property --fly-a {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+  @property --fly-s {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 1;
+  }
   #flash {
     position: absolute; left: 50%; top: 41%;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%) scale(var(--fly-s));
     font-family: Georgia, "Iowan Old Style", serif;
     font-weight: 700; font-size: 68px; letter-spacing: .1em;
-    opacity: 0; z-index: 3; pointer-events: none; white-space: nowrap;
+    opacity: var(--fly-a); z-index: 3; pointer-events: none; white-space: nowrap;
     text-shadow: 0 0 34px currentColor, 0 0 10px currentColor, 0 3px 10px rgba(0,0,0,.85);
   }
   #flash.go { animation: flyIn 1.9s cubic-bezier(.16,.84,.24,1) forwards; }
   @keyframes flyIn {
-    0%   { opacity: 0; transform: translate(-50%,-50%) scale(3.1); }
-    20%  { opacity: 1; transform: translate(-50%,-50%) scale(1);   }
-    62%  { opacity: 1; transform: translate(-50%,-50%) scale(1);   }
-    100% { opacity: 0; transform: translate(-50%,-50%) scale(.35); }
+    0%   { --fly-a: 0; --fly-s: 3.1; }
+    20%  { --fly-a: 1; --fly-s: 1;   }
+    62%  { --fly-a: 1; --fly-s: 1;   }
+    100% { --fly-a: 0; --fly-s: .35; }
   }
 
   /* ---------- end-of-game card, held inside the orb ---------- */
@@ -237,10 +266,11 @@
     position: absolute; left: 50%; top: 41%;
     transform: translate(-50%, -50%);
     width: 340px; text-align: center;
-    opacity: 0; z-index: 3; pointer-events: none;
-    transition: opacity .7s ease;
+    --a: 0;
+    opacity: var(--a); z-index: 3; pointer-events: none;
+    transition: --a .7s ease;
   }
-  #final.show { opacity: 1; }
+  #final.show { --a: 1; }
   #final .word {
     font-family: Georgia, "Iowan Old Style", serif;
     font-size: 40px; line-height: 1.1; color: #fff;
@@ -256,7 +286,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    #scene, #sheen { animation: none; }
     #orbFill { transition: none; }
     /* The entrance is skipped outright in entrance.ts; this only guards
        against the layer somehow surviving into a reduced-motion session. */

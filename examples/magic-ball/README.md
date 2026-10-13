@@ -322,6 +322,8 @@ it has to actually arrive, and quickly.
   glow as CSS layers on top of it; the canvas still draws only what shows through the window. The
   crop is what makes that work — it is sized and offset so the opening in the artwork lands on the
   aperture the canvas clips to, to within a third of a pixel. The arithmetic is in `style.css`.
+  The canvas is CPU-backed (`willReadFrequently`): the Meta Ray-Ban Display WebView composites a
+  GPU canvas without alpha, so its transparent pixels come out black and hide the ball.
 
 `physics.ts` takes its RNG as an argument, so all of the above is measurable: seed a `Ball`, drive
 `tick()` with a synthetic clock, and the whole thing runs headless in Node.

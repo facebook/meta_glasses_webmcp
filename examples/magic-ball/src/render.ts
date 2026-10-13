@@ -181,7 +181,10 @@ export interface RenderView {
 export function createRenderer(canvas: HTMLCanvasElement): (view: RenderView) => void {
   canvas.width = W
   canvas.height = H
-  const ctx = canvas.getContext('2d')
+  // A CPU-backed canvas. The default GPU canvas is a compositor layer, and the
+  // glasses WebView composites it without alpha: the transparent canvas shows
+  // as solid black over the whole ball, so only the die would be visible.
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) throw new Error('2D canvas context unavailable')
 
   return function draw(view: RenderView): void {

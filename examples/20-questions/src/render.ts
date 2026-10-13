@@ -125,18 +125,18 @@ function drainToEmpty() {
   const el = $('orbFill')
   if (!el) return
   clearTimeout(drainTimer)
-  el.style.opacity = '0'
+  el.style.setProperty('--a', '0')
   drainTimer = setTimeout(() => {
     // Snap both back with no transition: the band is empty at this point, so
-    // there is nothing to see fade, and leaving the opacity animating would
+    // there is nothing to see fade, and leaving the fade animating would
     // race a first question recorded within half a second.
     const prev = el.style.transition
     el.style.transition = 'none'
     el.style.setProperty('--fill-y', `${SPHERE_BOTTOM}px`)
-    el.style.opacity = '1'
+    el.style.setProperty('--a', '1')
     void el.offsetWidth
     el.style.transition = prev
-  }, 520) // just past the .5s opacity transition
+  }, 520) // just past the .5s fade
 }
 
 function renderHud(state: GameState) {
@@ -194,7 +194,7 @@ export function render(state: GameState) {
     clearFinal()
     const settle = () => {
       const fill = $('orbFill')
-      if (fill) fill.style.opacity = '1'
+      if (fill) fill.style.setProperty('--a', '1')
       setFill(1, false)
     }
     if (entranceDone) {
@@ -232,7 +232,7 @@ export function render(state: GameState) {
     cancelEntrance()
     setBase('over')
     const done = $('orbFill')
-    if (done) done.style.opacity = '0'
+    if (done) done.style.setProperty('--a', '0')
     const won = state.status === 'won'
     const word = state.secret ?? (won ? 'got it' : 'unknown')
     const sub = won

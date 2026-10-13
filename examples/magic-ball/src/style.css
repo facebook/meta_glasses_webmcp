@@ -56,6 +56,12 @@ body {
   min-height: 100vh;
 }
 
+@property --a {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
 /* ── The ball ─────────────────────────────────────────────────────── */
 
 #app {
@@ -199,8 +205,12 @@ body {
   inset: 0;
   border-radius: inherit;
   background: radial-gradient(circle at 50% 42%, #33146b 0%, #1b0a3c 58%, #0d0524 100%);
-  opacity: 1;
-  transition: opacity 400ms ease;
+  /* The fade runs on a registered number, not on opacity: an opacity
+     animation gets its own compositor layer, which the glasses WebView draws
+     without alpha, and the canvas above it would be pushed onto one too. */
+  --a: 1;
+  opacity: var(--a);
+  transition: --a 400ms ease;
   pointer-events: none;
 }
 
@@ -211,7 +221,7 @@ body {
    all the way back during the 400ms handover and was immediately dragged to
    black again for the new throw — a purple flash between question and roll. */
 #app[data-status='clearing'][data-queued='true'] #liquid::after {
-  opacity: 0;
+  --a: 0;
 }
 
 #app[data-status='shaking'] #liquid::after {
