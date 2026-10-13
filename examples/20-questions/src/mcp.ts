@@ -73,10 +73,42 @@ export function registerTools(game: Game) {
       'wait for them to speak each answer. ' +
       'Pacing: ask one question per conversational turn, then stop and wait. ' +
       'Start fast — "let’s play" is enough to begin. Call this and then prompt them AND ask your first ' +
-      'question in the same spoken turn. Never burn a turn on "tell me when you’re ready".',
-    inputSchema: { type: 'object', properties: {} },
+      'question in the same spoken turn. Never burn a turn on "tell me when you’re ready". ' +
+      'If a game is already running this changes nothing and returns it; pass restart=true only when ' +
+      'the human explicitly asks to start over.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        restart: {
+          type: 'boolean',
+          description:
+            'true only when the human explicitly asks to start over. Without it a game already ' +
+            'running is left alone and returned.',
+        },
+      },
+    },
     annotations: { destructiveHint: true },
-    execute: async () => {
+    execute: async ({ restart }: { restart?: boolean } = {}) => {
+      // The assistant hands each turn to a sub-agent with no memory of the game, and it reaches
+      // for this tool first; resetting on every turn threw away the answers so far.
+      const current = game.getState()
+      if (!restart && (current.status === 'playing' || current.status === 'out_of_questions')) {
+        return reply(
+          current,
+          {
+            status: current.status,
+            already_running: 'A game is already running, so nothing was reset.',
+            questions_used: current.used,
+            questions_left: game.questionsLeft(),
+            history: transcript(current),
+            your_role: ROLE,
+            next_action:
+              'If this request carries the human’s answer to your last question, record it now with ' +
+              `twenty_questions_record_answer. Then ${ASK_NEXT}`,
+          },
+          true,
+        )
+      }
       const state = game.startGame()
       return reply(state, {
         your_role: ROLE,

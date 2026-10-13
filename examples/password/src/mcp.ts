@@ -236,6 +236,27 @@ function halfTail(state: GameState) {
   }
 }
 
+/** What the page says about a round that has started: the read_state answer. */
+function runningRound(state: GameState) {
+  if (state.phase === 'intermission' || state.phase === 'over') return halfTail(state)
+  // The secret is only ever echoed back in half two, where it is the agent's own
+  // word to begin with.
+  return {
+    ...handover(state),
+    ...(state.phase === 'half1'
+      ? {
+          word_is_hidden_from_you:
+            'The page will not tell you the word in half one. That is the game — listen to them.',
+          next_action: LISTEN_AGAIN,
+        }
+      : {
+          next_action: clueThenSpeak(
+            'carries that clue. Reading the state is not a turn — they have heard nothing from you',
+          ),
+        }),
+  }
+}
+
 export function registerTools(game: Game) {
   // ------------------------------------------------------------------ setup
 
@@ -248,10 +269,40 @@ export function registerTools(game: Game) {
       `Each half is ${CARDS_PER_HALF} cards and ${HALF_SECONDS} seconds. ` +
       'IMPORTANT: the clock starts the moment this returns, because the first card flips up on their ' +
       'screen immediately. Only call it when the human has actually asked to play, and start talking ' +
-      'straight away — do not spend a turn asking whether they are ready.',
-    inputSchema: { type: 'object', properties: {} },
+      'straight away — do not spend a turn asking whether they are ready. ' +
+      'If a round is already running this changes nothing and returns it, so it is safe to call when ' +
+      'you are unsure; pass restart=true only when the human explicitly asks to start over.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        restart: {
+          type: 'boolean',
+          description:
+            'true only when the human explicitly asks to start over. Without it a round already ' +
+            'running is left alone and returned.',
+        },
+      },
+    },
     annotations: { destructiveHint: true },
-    execute: async () => {
+    execute: async ({ restart }: { restart?: boolean } = {}) => {
+      // The assistant hands each turn to a sub-agent that starts with no memory of the game, and
+      // it reaches for this tool first. Re-dealing on every turn burned the card the human was
+      // describing, so a running round is returned untouched unless a restart is asked for.
+      const current = game.getState()
+      if (!restart && current.phase !== 'idle' && current.phase !== 'over') {
+        return reply(current, {
+          ...runningRound(current),
+          already_running:
+            'A round is already running, so nothing was reset: same card, same clock, same score.',
+          ...(current.phase === 'half1'
+            ? {
+                next_action:
+                  'If this request carries what the human just said, call password_guess_word now with ' +
+                  'their exact words and your guess. Otherwise END YOUR TURN and listen.',
+              }
+            : {}),
+        })
+      }
       const state = game.newGame()
       return reply(state, {
         message: 'Half one. Their card is up and the clock is running.',
@@ -280,25 +331,7 @@ export function registerTools(game: Game) {
           next_action: 'Call password_new_game when the human asks to play.',
         })
       }
-      if (state.phase === 'intermission' || state.phase === 'over') {
-        return reply(state, halfTail(state))
-      }
-      // The secret is only ever echoed back in half two, where it is the
-      // agent's own word to begin with.
-      return reply(state, {
-        ...handover(state),
-        ...(state.phase === 'half1'
-          ? {
-              word_is_hidden_from_you:
-                'The page will not tell you the word in half one. That is the game — listen to them.',
-              next_action: LISTEN_AGAIN,
-            }
-          : {
-              next_action: clueThenSpeak(
-                'carries that clue. Reading the state is not a turn — they have heard nothing from you',
-              ),
-            }),
-      })
+      return reply(state, runningRound(state))
     },
   })
 

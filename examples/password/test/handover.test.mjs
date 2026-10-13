@@ -207,6 +207,19 @@ check(
 );
 check('half one shows the word, not blanks', faceText().length > 0 && !faceText().includes('_'));
 
+// The assistant's sub-agent starts every turn with no memory of the game and
+// calls password_new_game first. On the glasses that re-dealt the card the
+// human was describing, so their clue and the guess were both judged against
+// a word nobody had seen. A running round has to survive the call.
+const dealt = game.getState().card?.secret;
+const again = await call('password_new_game');
+check(
+  'a second password_new_game mid-round leaves the card alone',
+  game.getState().card?.secret === dealt && game.getState().cardNumber === 1,
+  `card was ${dealt}, now ${game.getState().card?.secret}`,
+);
+check('and says nothing was reset', typeof again.already_running === 'string', JSON.stringify(again).slice(0, 200));
+
 // Send the banned word on its own: `findViolation` scans token by token, so a
 // bare ban is the one input whose verdict cannot depend on the rest of the
 // sentence. Which ban comes back is read off the result rather than assumed.
@@ -389,7 +402,7 @@ check(
 // Last, because it starts rounds: the tests above assert on an idle page.
 console.log('\nA second new game — the card on screen has to change with it');
 
-await call('password_new_game');
+await call('password_new_game', { restart: true });
 const regameWord = game.getState().card?.secret ?? '';
 await waitFor(() => faceText() === regameWord);
 const regameToken = game.getState().flipToken;
@@ -399,7 +412,7 @@ const regameToken = game.getState().flipToken;
 let regameNext = regameWord;
 let regameNextToken = regameToken;
 for (let i = 0; i < 40 && regameNext === regameWord; i++) {
-  await call('password_new_game');
+  await call('password_new_game', { restart: true });
   regameNext = game.getState().card?.secret ?? '';
   regameNextToken = game.getState().flipToken;
 }

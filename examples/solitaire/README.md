@@ -59,7 +59,8 @@ thrown exceptions.
   locations. `count` sets the run length for tableau-to-tableau moves
   (default 1). A move to any foundation lands on the right suit pile.
 - `solitaire_hint` — `{}`. Suggests one useful legal move without playing it.
-- `solitaire_new_game` — `{}`. Deals a fresh game.
+- `solitaire_new_game` — `{restart?}`. Deals a fresh game. Once cards have been
+  played it deals only with `restart: true`; otherwise it returns the game under way.
 - `solitaire_read_board` — `{}`. Reads the board without moving.
 
 Every tool returns the same JSON snapshot: `status`, `foundations` (top card

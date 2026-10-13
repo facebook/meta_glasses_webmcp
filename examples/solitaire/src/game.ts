@@ -28,6 +28,7 @@ type Listener = (state: GameState) => void;
 export class Game {
   private state: GameState;
   private listeners = new Set<Listener>();
+  private moved = false;
 
   constructor(seed?: number) {
     this.state = deal(seed);
@@ -43,8 +44,14 @@ export class Game {
     return () => this.listeners.delete(fn);
   }
 
+  /** Whether anything has been played since the last deal. */
+  hasMoves(): boolean {
+    return this.moved;
+  }
+
   private apply(result: MoveResult): MoveResult {
     if (result.ok) {
+      this.moved = true;
       this.state = result.state;
       for (const fn of this.listeners) fn(this.state);
     }
@@ -52,6 +59,7 @@ export class Game {
   }
 
   newGame(seed?: number): GameState {
+    this.moved = false;
     this.state = deal(seed);
     for (const fn of this.listeners) fn(this.state);
     return this.state;

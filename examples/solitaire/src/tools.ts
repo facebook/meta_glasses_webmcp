@@ -11,7 +11,7 @@
 // illegal moves come back as tool errors carrying the engine's reason.
 
 import { registerTool } from './webmcp.ts';
-import { type GameState, cardCode } from './engine.ts';
+import { type GameState, cardCode, isWon } from './engine.ts';
 import { asciiBoard, type Game } from './game.ts';
 
 function snapshot(state: GameState): string {
@@ -132,10 +132,34 @@ export function registerSolitaireTools(game: Game): void {
 
   registerTool({
     name: 'solitaire_new_game',
-    description: 'Deal a fresh game of Klondike solitaire. Returns the new board state.',
-    inputSchema: { type: 'object', properties: {} },
+    description:
+      'Deal a fresh game of Klondike solitaire. Returns the new board state. Once cards have been ' +
+      'played this deals only with restart=true; without it the game under way is returned as is.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        restart: {
+          type: 'boolean',
+          description:
+            'true when the human asks for a new game, a new deal, or to start over. Without it a ' +
+            'game already under way is left alone.',
+        },
+      },
+    },
     annotations: { destructiveHint: true },
-    execute: async () => snapshot(game.newGame()),
+    execute: async ({ restart }: { restart?: boolean } = {}) => {
+      // The assistant hands each turn to a sub-agent with no memory of the game, which can reach
+      // for this tool unprompted; a game in progress survives unless a new deal was asked for.
+      const state = game.getState();
+      if (!restart && game.hasMoves() && !isWon(state)) {
+        return JSON.stringify({
+          ...JSON.parse(snapshot(state)),
+          already_running:
+            'A game is under way, so nothing was dealt. Pass restart=true only if the human asked for a new game.',
+        });
+      }
+      return snapshot(game.newGame());
+    },
   });
 
   registerTool({

@@ -34,6 +34,20 @@ describe('solitaire tools', () => {
     ]);
   });
 
+  it('keeps a game under way unless a restart is asked for', async () => {
+    const before = JSON.parse((await executeTool('solitaire_draw')) as string) as Board;
+    const kept = JSON.parse((await executeTool('solitaire_new_game')) as string) as Board & {
+      already_running?: string;
+    };
+    expect(kept.already_running).toBeTypeOf('string');
+    expect(kept.waste).toEqual(before.waste);
+    const fresh = JSON.parse(
+      (await executeTool('solitaire_new_game', { restart: true })) as string,
+    ) as Board & { already_running?: string };
+    expect(fresh.already_running).toBeUndefined();
+    expect(fresh.waste.count).toBe(0);
+  });
+
   it('answers a draw with the full board', async () => {
     const board = JSON.parse((await executeTool('solitaire_draw')) as string) as Board;
     expect(board.status).toBe('in progress');

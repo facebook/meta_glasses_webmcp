@@ -26,7 +26,7 @@ Rank then suit: A=Ace, J=Jack, Q=Queen, K=King, numbers otherwise. Suits are S(�
 - solitaire_draw {} — flip one card from the stock to the waste (recycles the waste when the stock is empty).
 - solitaire_move {from, to, count?} — move a card or run. `from` = "waste" | "tableau:1..7" | "foundation:1..4". `to` = "tableau:1..7" | "foundation:1..4". `count` moves a run of that many cards for tableau-to-tableau moves. Moving "to" a foundation lands on the correct suit pile automatically.
 - solitaire_hint {} — get one suggested legal move.
-- solitaire_new_game {} — deal a fresh game.
+- solitaire_new_game {restart?} — deal a fresh game. Once cards have been played, pass restart=true when the human asks for a new game; without it the game under way is returned unchanged.
 - solitaire_read_board {} — read state without moving.
 
 Every tool returns the full board (foundations, tableau face-up cards + face-down counts, waste top, stock size, status, and an ASCII board), so do not call solitaire_read_board right after another tool. Illegal moves come back as an error with a reason — pick a different move.
