@@ -1,0 +1,18 @@
+{
+  "name": "example-20-questions",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "20 Questions example for glasses_webmcp: the player holds the secret and the agent asks the yes/no questions",
+  "license": "BSD-3-Clause",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "dev:https": "Q20_CERT_DIR=${Q20_CERT_DIR:-$PWD/certs} Q20_HTTPS_HOST=${Q20_HTTPS_HOST:-q20.example.com} vite --host --port 5184 --strictPort"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

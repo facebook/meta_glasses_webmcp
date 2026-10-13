@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=600, initial-scale=1" />
+    <!--
+      The title is free context: agent hosts inject it into the system prompt.
+      This game swaps roles at half time, and getting the direction wrong is the
+      failure mode, so both halves are spelled out here.
+    -->
+    <title>
+      Password — HALF ONE: the HUMAN describes the word and YOU the assistant guess it. HALF TWO:
+      YOU describe and the HUMAN guesses. Banned words lose a point.
+    </title>
+  </head>
+  <body>
+    <!-- `pregame` starts the clock and scoreboard hidden; render.ts drops it
+         when the first card comes up. Set here rather than left to the first
+         paint, which would flash them on screen and then fade them out. -->
+    <div id="app" class="pregame" aria-label="A word card on a lit table">
+      <div id="bg" aria-hidden="true"></div>
+      <div id="glow" aria-hidden="true"></div>
+
+      <!-- Clock only. The half and card-count chips that used to flank it are
+           gone: the card itself already says whose turn it is, and on a 600px
+           panel the two chips read as controls you could press. -->
+      <header id="hud">
+        <span id="clock" class="mono">2:00</span>
+      </header>
+
+      <div id="scene">
+        <div id="card" aria-live="polite">
+          <div class="face back">
+            <div class="weave" aria-hidden="true"></div>
+            <div class="monogram">P</div>
+          </div>
+          <div class="face front">
+            <div class="eyebrow" id="eyebrow">Two halves — you clue first</div>
+            <div class="secret" id="secret">PASSWORD</div>
+            <div class="rule" aria-hidden="true"></div>
+            <div class="bannedLabel" id="bannedLabel">Never say</div>
+            <ul class="banned" id="banned"></ul>
+          </div>
+        </div>
+      </div>
+
+      <footer id="scores">
+        <div class="score you">
+          <span class="lab">Your clues</span><span class="val mono" id="scoreYou">0</span>
+        </div>
+        <div id="ticker"></div>
+        <div class="score ai">
+          <span class="lab">AI clues</span><span class="val mono" id="scoreAi">0</span>
+        </div>
+      </footer>
+
+      <div id="final" aria-hidden="true">
+        <div class="verdict" id="verdict"></div>
+        <div class="tally mono" id="tally"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

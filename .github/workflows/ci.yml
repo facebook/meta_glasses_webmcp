@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [todo, market, solitaire]
+        example: [todo, market, solitaire, magic-ball, password, 20-questions]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,4 +22,6 @@ jobs:
       # No lockfile is exported, so resolution is fresh on every run.
       - run: yarn install
       - run: yarn workspace example-${{ matrix.example }} build
-      - run: yarn workspace example-${{ matrix.example }} test
+      # Magic Ball and 20 Questions ship no tests.
+      - if: matrix.example != 'magic-ball' && matrix.example != '20-questions'
+        run: yarn workspace example-${{ matrix.example }} test

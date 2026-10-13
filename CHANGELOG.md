@@ -10,6 +10,8 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Public repository scaffolding: README, contribution guide, license, and the
   agentic todo example.
+- Magic Ball, Password, and 20 Questions examples, each with a demo clip and
+  an install QR code.
 
 The library sources, documentation, and agent skills land in a follow-up
 change, and nothing is published to a package registry yet.

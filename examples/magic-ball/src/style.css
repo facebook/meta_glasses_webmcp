@@ -1,0 +1,336 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/* The canvas draws only what shows through the window; the ball, the liquid
+   and the glow are DOM layers behind it. Keeping them in CSS means the
+   animation loop touches one element and never repaints the furniture. */
+
+:root {
+  --bg: #000;
+  --ink: #e8e2f5;
+  --muted: #8d84a8;
+  --violet: #b07bff;
+  --yes: #6ee7a8;
+  --no: #ff7b8a;
+  --maybe: #ffc46b;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  /* Flat black, not a violet wash. The glow belongs to the ball — anything
+     behind it competes with the one light source on the page, and on a device
+     screen it reads as a grey box rather than a sphere floating in the dark. */
+  background: var(--bg);
+  color: var(--ink);
+  /* The page is a fixed 600px-wide design (see the viewport meta) and the column
+     below comes to 624px. Anything shorter used to give a few pixels of scroll:
+     a scrollbar for nothing, and on a touch device a page that slides under your
+     finger. There is a black margin above the ball in the artwork, so a small
+     shortfall is absorbed by clipping dead space rather than shown as scroll. */
+  overflow: hidden;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* ── The ball ─────────────────────────────────────────────────────── */
+
+#app {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  flex: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* #app is the only interactive thing on the page and it fills the entire
+   viewport, so a UA focus ring on it draws a border around the whole screen —
+   on the glasses that is a 1px frame, because a select press focuses it.
+   Move the affordance onto the ball
+   instead of dropping it: nothing frames the page.
+
+   It rings the window, not the silhouette. The ball's lower edge in the
+   artwork fades to the same black as the page — measured, the bottom third
+   never rises above luminance 2 — so a ring on the silhouette would hang in
+   empty black for half its circumference. The window is the one edge the
+   image draws crisply, and it is the edge whose radius we actually know. */
+#app:focus {
+  outline: none;
+}
+
+#app:focus-visible #shell::after {
+  content: '';
+  position: absolute;
+  /* The window circle: 2 x WINDOW_SCR_R, centred — same box as #liquid. */
+  top: 157px;
+  left: 157px;
+  width: 286px;
+  height: 286px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px rgba(176, 123, 255, 0.55),
+    0 0 28px 8px rgba(176, 123, 255, 0.3);
+  pointer-events: none;
+}
+
+/* A hand rattling the ball. Kept small — the die is the thing that moves, and
+   the sphere is only acknowledging that something happened to it. */
+@keyframes ball-shake {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  15% {
+    transform: translate3d(-7px, 3px, 0) rotate(-1.2deg);
+  }
+  32% {
+    transform: translate3d(6px, -4px, 0) rotate(1deg);
+  }
+  50% {
+    transform: translate3d(-5px, -3px, 0) rotate(-0.8deg);
+  }
+  68% {
+    transform: translate3d(4px, 3px, 0) rotate(0.6deg);
+  }
+  85% {
+    transform: translate3d(-2px, -1px, 0) rotate(-0.3deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+/* Two cycles = 640ms, which fits inside THROW_DELAY_MS (800ms in ball.ts), so
+   the rattle is over before the die drops out of the fog rather than running
+   under it for the whole fall. It is on #app, and #hud is a sibling, so the
+   readout below does not come along — and a transform does not reflow, so
+   nothing it moves can shift the layout either. */
+#app[data-status='shaking'] {
+  animation: ball-shake 320ms ease-in-out 2;
+}
+
+/* The ball is a photographic render, not a stack of gradients: magic-ball.png in
+   this directory is the source art, and public/magic-ball.jpg is that file cropped
+   and resampled so the opening it draws lands exactly on the die's aperture —
+   centred on (300, 300) with radius WINDOW_SCR_R, the same circle the canvas
+   clips to and the same circle #liquid fills.
+
+   The numbers are measured, not guessed. In the 1024px source the violet rim
+   of the opening is a circle at (514.1, 512.9) with radius 234.8 (least-squares
+   fit over 692 radial samples, sd 2.9). Cropping 984px square from (22, 21) and
+   scaling to 600 puts that circle at (300, 300) with radius 143.2 — against a
+   target of 143.25, so both centre and radius land inside a third of a pixel.
+   Regenerate with:
+
+     ffmpeg -i magic-ball.png -vf "crop=984:984:22:21,scale=600:600:flags=lanczos" \
+       -q:v 2 -pix_fmt yuvj444p public/magic-ball.jpg
+
+   It is served at its native 600x600 and painted at 600x600, so the browser
+   never resamples it and that sub-pixel alignment survives to the screen.
+   Anything that changes W/H in render.ts or the camera constants in physics.ts
+   moves WINDOW_SCR_R and invalidates the crop — rerun the fit, don't nudge. */
+#shell {
+  position: absolute;
+  inset: 0;
+  background: url('/magic-ball.jpg') 0 0 / 600px 600px no-repeat;
+}
+
+/* 2 x WINDOW_SCR_R, centred in #app — which is where the image's own opening
+   is, so this disc fills it and the image's violet rim seals the seam. This is
+   the "liquid" the die tumbles through. The base is near-black; the purple
+   aura lives on ::after so it can fade (see below). */
+#liquid {
+  position: absolute;
+  top: 157px;
+  left: 157px;
+  width: 286px;
+  height: 286px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #0b0518 0%, #070311 58%, #04020c 100%);
+  box-shadow:
+    inset 0 0 46px rgba(0, 0, 0, 0.9),
+    inset 0 6px 20px rgba(176, 123, 255, 0.18);
+  transition: box-shadow 260ms ease;
+}
+
+/* The aura is its own layer because a gradient cannot be transitioned:
+   `background-image` interpolates discretely, so a colour change would cut
+   rather than fade. Only this element's opacity moves.
+
+   It is lit while the ball is at rest and dark for the whole throw. The die's
+   edges are drawn as bright rims, and against the purple they read as a lit
+   wireframe rather than a die tumbling in the dark.
+
+   The two durations are doing different jobs. Darkening (320ms) has to beat the
+   die out of the depth fog. It has THROW_DELAY_MS (800ms) plus the fall itself
+   to do that in, so the window is comfortably black before there is anything to
+   see in it, and the slower fade reads as the liquid going dark rather than as
+   a light being switched off. The return
+   (400ms) is FADE_MS from ball.ts: the aura swelling back is the same beat as
+   the die dissolving, so the linger running out reads as one movement rather
+   than two. Keep the two numbers in step. */
+#liquid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 42%, #33146b 0%, #1b0a3c 58%, #0d0524 100%);
+  opacity: 1;
+  transition: opacity 400ms ease;
+  pointer-events: none;
+}
+
+#app[data-status='shaking'] #liquid::after,
+#app[data-status='presenting'] #liquid::after,
+#app[data-status='settled'] #liquid::after,
+/* A fade with a shake queued behind it stays dark. Without this the aura swelled
+   all the way back during the 400ms handover and was immediately dragged to
+   black again for the new throw — a purple flash between question and roll. */
+#app[data-status='clearing'][data-queued='true'] #liquid::after {
+  opacity: 0;
+}
+
+#app[data-status='shaking'] #liquid::after {
+  transition-duration: 320ms;
+}
+
+#app[data-status='settled'] #liquid {
+  box-shadow:
+    inset 0 0 46px rgba(0, 0, 0, 0.82),
+    inset 0 6px 26px rgba(176, 123, 255, 0.32);
+}
+
+#c {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+/* ── Readout ──────────────────────────────────────────────────────── */
+
+/* The readout is pulled back up over the bottom of the ball. The artwork's
+   ball is larger relative to its window than the gradient shell was — matching
+   the opening to the aperture is what fixes the scale, and at that scale the
+   silhouette runs to y≈573 of 600 — so there is no longer a gap below it to
+   drop the text into, and 600px is all the height the glasses web app gives
+   us. It reads fine because the lower cap is flat black: measured across the
+   readout band, y 505–585 averages luminance 2 and never exceeds 24.
+
+   The height is FIXED, and that is what anchors the ball. `body` centres the
+   column, so anything that changes this box's height moves #app with it: the
+   question line appearing on the first shake, the answer swapping between its
+   two weights, a verdict wrapping to a second line. Each of those shifted the
+   ball by ~10px mid-throw, and near a 650px-tall viewport they also toggled the
+   scrollbar, which shifted it sideways as well. A fixed box cannot do any of
+   that, whatever the readout does inside it. */
+#hud {
+  width: 600px;
+  /* Cancelled exactly by the negative margin below, so #app + readout come to
+     600px on the nose — the same 600 the glasses web app gives us, measured on
+     device. Anything over it is not a scrollbar any more (html/body clip) but
+     it does push the ball off centre. */
+  height: 91px;
+  margin-top: -91px;
+  text-align: center;
+  padding: 10px 2rem 0;
+}
+
+#question {
+  transition: opacity 550ms ease;
+  font-size: 0.95rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-bottom: 0.4rem;
+}
+
+/* Stay in the layout when there is no question: `hidden` collapses the line,
+   and the readout below it would jump up by its full height. */
+#question[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+#question::before {
+  content: '\201C';
+}
+
+#question::after {
+  content: '\201D';
+}
+
+#answer {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  /* rem, not em: in `em` this tracked the font-size, which switches between the
+     two weights below, so the block resized itself on every settle. */
+  min-height: 2.2rem;
+  color: var(--ink);
+  transition:
+    color 200ms ease,
+    opacity 550ms ease;
+}
+
+/* Fades in step with the die's own fade, so the readout and the window empty
+   together rather than the text popping out from under a dimming die. */
+#answer[data-status='clearing'],
+#question[data-clearing='true'] {
+  opacity: 0;
+}
+
+#answer[data-status='idle'],
+#answer[data-status='shaking'],
+#answer[data-status='presenting'] {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+#answer[data-tone='affirmative'] {
+  color: var(--yes);
+}
+
+#answer[data-tone='negative'] {
+  color: var(--no);
+}
+
+#answer[data-tone='noncommittal'] {
+  color: var(--maybe);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #liquid,
+  #liquid::after,
+  #question,
+  #answer {
+    transition: none;
+  }
+
+  #app[data-status='shaking'] {
+    animation: none;
+  }
+}

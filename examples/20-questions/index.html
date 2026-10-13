@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=600, initial-scale=1" />
+    <!--
+      The title is free context: agent hosts inject it into the system prompt,
+      so it carries the role assignment. This game's direction is the opposite
+      of the usual one, and saying so here costs nothing.
+    -->
+    <title>
+      20 Questions — the HUMAN is thinking of a secret; YOU the assistant ask THEM yes/no questions
+      and guess it
+    </title>
+  </head>
+  <body>
+    <div id="app" aria-label="A glowing orb">
+      <div id="aura"></div>
+      <div id="scene">
+        <div id="orb"></div>
+        <div id="orbFill"></div>
+      </div>
+      <div id="sheen"></div>
+      <div id="flash" aria-hidden="true"></div>
+      <div id="final"><div class="word"></div><div class="sub"></div></div>
+      <div id="hud"><span class="n">20</span>questions remaining</div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

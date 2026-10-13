@@ -1,0 +1,22 @@
+{
+  "name": "example-password",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Password example for glasses_webmcp: a two-half describe-the-word duel between the player and the agent",
+  "license": "BSD-3-Clause",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "dev:https": "PW_CERT_DIR=${PW_CERT_DIR:-$PWD/certs} PW_HTTPS_HOST=${PW_HTTPS_HOST:-pw.example.com} vite --host --port 5173 --strictPort",
+    "test": "vite-node test/vet-deck.mjs -- --strict && vite-node test/handover.test.mjs",
+    "vet": "vite-node test/vet-deck.mjs -- --strict"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vite-node": "^3.2.4"
+  }
+}

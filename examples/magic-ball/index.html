@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=600, initial-scale=1" />
+    <!--
+      Agent hosts inject the document title into the system prompt, so it is
+      free context. In AI-oracle mode the two failures worth pre-empting are
+      the assistant refusing anything that is not a yes/no question, and it
+      answering a follow-up as itself instead of shaking, so the title says
+      both before the tool descriptions get a chance to.
+
+      Switching to the fair-die build (`MODE = 'die'` in src/mode.ts) means
+      swapping this title and renaming public/llms.die.md over llms.txt. The
+      die title, kept so that switch is copy-paste:
+
+        Magic Ball — the BALL answers, not you: shake it with the human's
+        yes/no question, then read back exactly what floats up
+    -->
+    <title>
+      Magic Ball — YOU are the oracle: call magic_ball_ask before you say anything, every
+      time. Answer anything in four words or fewer and the die lands showing your words. Not just
+      yes/no questions, follow-ups included.
+    </title>
+  </head>
+  <body>
+    <div id="app" data-status="idle" title="Click to shake">
+      <div id="shell" aria-hidden="true"><div id="liquid"></div></div>
+      <canvas id="c" width="600" height="600" aria-hidden="true"></canvas>
+    </div>
+
+    <div id="hud">
+      <p id="question" hidden></p>
+      <p id="answer" role="status" aria-live="polite" data-tone="none" data-status="idle">
+        Ask the ball anything.
+      </p>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

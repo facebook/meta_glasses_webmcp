@@ -1,0 +1,486 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/* Password — a card on a lit table.
+ *
+ * The card is the whole interface, so it gets the budget: real 3D, a printed
+ * back, and a flip on its vertical axis every time a new word comes up. The
+ * background is CSS-only (drifting radial washes + a grain overlay), which
+ * keeps the example asset-free.
+ */
+
+:root {
+  --ink: #f3ecdf;
+  --dim: #9a8f7f;
+  --card: #fbf6ea;
+  --card-edge: #d8cbb2;
+  --good: #4ade80;
+  --bad: #f2585b;
+  --gold: #f0b64a;
+  --radius: 26px;
+  --sans: 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+  --mono: 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #0a0910;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  font-family: var(--sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+#app {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 56px 1fr 74px;
+  isolation: isolate;
+}
+
+/* ------------------------------------------------------------- background */
+
+/* Flat black. The card is the only lit thing on the table. */
+#bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #000;
+}
+
+/* Pulses green or red under the card when a card resolves. */
+#glow {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  background: radial-gradient(46% 40% at 50% 48%, currentColor 0%, transparent 70%);
+}
+
+#app.flash-correct #glow {
+  color: var(--good);
+  opacity: 0.5;
+}
+
+#app.flash-violation #glow {
+  color: var(--bad);
+  opacity: 0.6;
+}
+
+#app.flash-skip #glow {
+  color: var(--gold);
+  opacity: 0.32;
+}
+
+/* -------------------------------------------------------------------- hud */
+
+/* The clock is the only thing up here now, so it centres rather than sitting
+   between two chips. */
+#hud {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 22px;
+}
+
+/* The clock and the scoreboard belong to a round in progress. Before one starts
+   they are a full 2:00 and two zeroes standing for nothing, which reads as a
+   game already running and stuck. They fade in with the first card instead.
+   Opacity rather than display, so the card does not jump when they arrive. */
+#hud,
+#scores {
+  opacity: 1;
+  transition: opacity 0.45s ease;
+}
+
+#app.pregame #hud,
+#app.pregame #scores {
+  opacity: 0;
+}
+
+#clock {
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#clock.low {
+  color: var(--bad);
+  animation: tick 1s steps(2, end) infinite;
+}
+
+@keyframes tick {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ------------------------------------------------------------------- card */
+
+#scene {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  perspective: 1400px;
+}
+
+#card {
+  position: relative;
+  width: 330px;
+  height: 400px;
+  transform-style: preserve-3d;
+  /* Parked face-down. `.revealed` spins it to the front. */
+  transform: rotateY(180deg) scale(0.94);
+  transition: transform 0.78s cubic-bezier(0.19, 0.9, 0.24, 1);
+  filter: drop-shadow(0 26px 40px rgba(0, 0, 0, 0.55));
+}
+
+#card.revealed {
+  transform: rotateY(0deg) scale(1);
+}
+
+/* Away entirely between halves and after the final card. */
+#card.gone {
+  transform: rotateY(180deg) scale(0.7);
+  opacity: 0;
+  transition:
+    transform 0.5s ease,
+    opacity 0.5s ease;
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+
+.face.front {
+  background: linear-gradient(168deg, #fffdf7 0%, var(--card) 46%, #eee4d0 100%);
+  border: 1px solid var(--card-edge);
+  color: #171219;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 24px 24px;
+  text-align: center;
+}
+
+.face.back {
+  transform: rotateY(180deg);
+  background: linear-gradient(150deg, #2b1d52 0%, #17123a 55%, #0f1a3a 100%);
+  border: 1px solid rgba(243, 236, 223, 0.14);
+  display: grid;
+  place-items: center;
+}
+
+.face.back .weave {
+  position: absolute;
+  inset: 14px;
+  border: 1px solid rgba(240, 182, 74, 0.32);
+  border-radius: 16px;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(240, 182, 74, 0.1) 0 2px, transparent 2px 11px),
+    repeating-linear-gradient(-45deg, rgba(203, 179, 255, 0.1) 0 2px, transparent 2px 11px);
+}
+
+.face.back .monogram {
+  position: relative;
+  font-size: 74px;
+  font-weight: 700;
+  color: rgba(240, 182, 74, 0.85);
+  letter-spacing: 0.06em;
+}
+
+.eyebrow {
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #8a7f6d;
+  margin-bottom: 18px;
+}
+
+/* Never wraps. render.ts sizes the text to the card instead — LIGHTHOUSE at a
+   fixed 44px pushed its last letter onto a second line. */
+.secret {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+/* Half two: the page draws blanks instead, and they need room to breathe. */
+.secret.blanks {
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+  color: #4a3f52;
+  transition: color 0.3s ease;
+}
+
+/* The answer, landing in the blanks as the card finishes. Same slots, same
+   metrics — only the ink changes, so nothing shifts as the letters arrive. */
+.secret.blanks.filled {
+  color: #171219;
+  text-shadow: 0 0 22px rgba(240, 182, 74, 0.5);
+}
+
+/* A won word, turning over one letter at a time.
+ *
+ * `inline-block` is what makes a letter transformable at all — an inline box
+ * ignores rotate. The stagger is not in here: render.ts adds `.spun` to each
+ * letter in turn, so the wave reads left to right and the card only turns over
+ * once the last one has finished. A full 360 rather than a flip to 180, so the
+ * letter ends facing front and stays readable the whole way round. */
+.secret .ch {
+  display: inline-block;
+  will-change: transform;
+  transition:
+    transform 0.42s cubic-bezier(0.2, 0.75, 0.3, 1),
+    color 0.42s ease,
+    text-shadow 0.42s ease;
+}
+
+.secret .ch.spun {
+  transform: rotateY(360deg);
+  color: var(--good);
+  text-shadow: 0 0 20px rgba(74, 222, 128, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .secret .ch {
+    transition: color 0.2s ease;
+  }
+
+  .secret .ch.spun {
+    transform: none;
+  }
+}
+
+.rule {
+  width: 46px;
+  height: 2px;
+  background: #d8cbb2;
+  margin: 20px 0 16px;
+  flex: none;
+}
+
+.bannedLabel {
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bad);
+  margin-bottom: 12px;
+}
+
+.banned {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 19px;
+  font-weight: 600;
+  color: #3d3340;
+}
+
+/* The word that burned the card, on its way out.
+ *
+ * `text-decoration-color` is animatable where `text-decoration` is not, so the
+ * rule is painted on from transparent rather than drawn across — one property,
+ * no pseudo-element, and it tracks the text width for free however long the
+ * word is. The static declarations are the resting state, which is also what
+ * reduced motion gets. */
+.banned li.struck {
+  color: var(--bad);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--bad);
+  animation: strike 0.72s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes strike {
+  0% {
+    color: #3d3340;
+    text-decoration-color: transparent;
+    transform: translateX(0) scale(1);
+  }
+  16% {
+    color: var(--bad);
+    text-decoration-color: transparent;
+    transform: translateX(-7px) scale(1.07);
+  }
+  32% {
+    text-decoration-color: transparent;
+    transform: translateX(6px) scale(1.07);
+  }
+  48% {
+    transform: translateX(-4px) scale(1.05);
+  }
+  64% {
+    text-decoration-color: var(--bad);
+    transform: translateX(3px) scale(1.03);
+  }
+  100% {
+    color: var(--bad);
+    text-decoration-color: var(--bad);
+    transform: translateX(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banned li.struck {
+    animation: none;
+  }
+}
+
+/* The hint the human reads while the agent is doing the describing. */
+.face.front.guessing .banned {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b6070;
+  line-height: 1.5;
+}
+
+/* ----------------------------------------------------------------- scores */
+
+/* The side columns are sized by the labels, not the scores — at 14.25px with
+   0.16em of tracking "YOUR CLUES" measures ~109px against the old 92px column.
+   `minmax(120px, max-content)` holds both sides equal at the width that fits,
+   so the ticker stays centred, but lets a column grow rather than clip if the
+   device substitutes a wider face for Inter. The label is always wider than the
+   score, so the number never moves the column. */
+#scores {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr minmax(120px, max-content);
+  align-items: center;
+  gap: 10px;
+  padding: 0 22px 14px;
+}
+
+.score {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.score.ai {
+  text-align: right;
+}
+
+/* 9.5px * 1.5. The score itself is deliberately untouched below — this is the
+   caption growing, not the number. */
+.score .lab {
+  font-size: 14.25px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.score .val {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.score.you .val {
+  color: #cbb3ff;
+}
+
+.score.ai .val {
+  color: #8fdcf0;
+}
+
+.score.active .lab {
+  color: var(--ink);
+}
+
+#ticker {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dim);
+  text-align: center;
+  max-height: 36px;
+  overflow: hidden;
+}
+
+#ticker .now {
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------ final card */
+
+#final {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  text-align: center;
+  background: rgba(10, 9, 16, 0.82);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+#app.over #final {
+  opacity: 1;
+}
+
+#final .verdict {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+#final .tally {
+  font-size: 15px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #clock.low {
+    animation: none;
+  }
+
+  #card {
+    transition-duration: 0.001s;
+  }
+}
