@@ -36,7 +36,7 @@
 // what the model actually steers on.
 import { registerTool } from './webmcp.ts'
 import { CARDS_PER_HALF, HALF_SECONDS, MAX_CLUE_REJECTS, formatClock } from './engine.ts'
-import type { Fail, Game, GameState } from './game.ts'
+import type { Fail, Game, GameState, Tally } from './game.ts'
 
 const ROLE_HALF1 =
   'HALF ONE. YOU are the GUESSER. The card is on the human’s screen, not yours — you do NOT know ' +
@@ -204,6 +204,13 @@ function cardTail(lead: string, nextAction: string, ended: boolean, state: GameS
 }
 
 /** Shared tail for "the half just ended" results. */
+/** "2 right, 2 burned on banned words: 0 points" — the score and what made it. */
+function scoreLine(tally: Tally, score: number): string {
+  const right = `${tally.correct} right`
+  const burned = tally.fouls ? `, ${tally.fouls} burned on banned words` : ''
+  return `${right}${burned}: ${score} ${Math.abs(score) === 1 ? 'point' : 'points'}`
+}
+
 function halfTail(state: GameState) {
   if (state.phase === 'over') {
     const { youScore, aiScore } = state
@@ -215,7 +222,9 @@ function halfTail(state: GameState) {
           : 'It is a tie.'
     return {
       game_over: true,
-      message: `Full time. Their clues scored ${youScore}, yours scored ${aiScore}. ${verdict}`,
+      message:
+        `Full time. Their clues: ${scoreLine(state.tally.half1, youScore)}. ` +
+        `Yours: ${scoreLine(state.tally.half2, aiScore)}. ${verdict}`,
       next_action:
         'Read the final score out loud in one short line and say who clued better. Stop calling tools ' +
         'unless they ask for another game.',
@@ -225,7 +234,8 @@ function halfTail(state: GameState) {
     half_over: true,
     ...handover(state),
     message:
-      `Half one is done. Their clues scored ${state.youScore}. The clock is STOPPED, and the page has ` +
+      `Half one is done. Their clues: ${scoreLine(state.tally.half1, state.youScore)}. Say it that ` +
+      'way, right and burned, not just the score. The clock is STOPPED, and the page has ' +
       'already dealt you the first word of half two — it is in your_word. You do not have to ask for it.',
     next_action: clueThenSpeak(
       'gives their half-one score, says you are the one describing now, and delivers that cleared clue. ' +

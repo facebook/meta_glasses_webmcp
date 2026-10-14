@@ -25,8 +25,8 @@
 // Descriptions are weak, tool results are strong: the freshest tool output is
 // what the model actually steers on.
 import { registerTool } from './webmcp'
-import { MAX_QUESTIONS, normalizeAnswer, strategyNote } from './engine'
-import { transcript, type Game, type GameState } from './game'
+import { MAX_QUESTIONS, normalizeAnswer, questionKey, strategyNote } from './engine'
+import { transcript, type Game, type GameState, type Pending } from './game'
 
 const ROLE =
   'YOU are the guesser. The HUMAN is thinking of a secret and only they know it. ' +
@@ -41,6 +41,10 @@ const ROLE =
 const ASK_NEXT =
   'STOP CALLING TOOLS. Say your NEXT yes/no question out loud to the human, then END YOUR TURN and wait for ' +
   'them to answer it. Record their answer at the start of your next turn. Never assume or invent their answer.'
+
+const GUESS_NEXT =
+  'STOP CALLING TOOLS. Say your guess out loud as a yes/no question, then END YOUR TURN and wait for ' +
+  'the human to tell you whether it is right.'
 
 const OPENING_PLAN =
   'Aim to halve the possibilities with every question, so twenty questions can separate about a million ' +
@@ -57,7 +61,32 @@ function toolError(reason: string, withRole = false) {
 /** Serialise a result, folding in the coaching the transcript supports. */
 function reply(state: GameState, extra: Record<string, unknown>, coach = false) {
   const note = coach ? strategyNote(state.asked) : null
-  return JSON.stringify({ ok: true, ...extra, ...(note ? { strategy: note } : {}) })
+  return JSON.stringify({ ok: true, ...extra, ...pendingFields(state), ...(note ? { strategy: note } : {}) })
+}
+
+/** What the human is being asked right now, so a memoryless next turn can find it. */
+function pendingFields(state: GameState) {
+  if (!state.pending) return {}
+  return state.pending.kind === 'guess'
+    ? { pending_guess: state.pending.text }
+    : { pending_question: state.pending.text }
+}
+
+/** Where the human's next reply goes, given what the page is holding. */
+function answerPending(state: GameState): string | null {
+  if (state.pending?.kind === 'question') {
+    return (
+      `The human's reply answers "${state.pending.text}". Record it with twenty_questions_record_answer ` +
+      '(leave question out) and pass next_question with the question you ask next.'
+    )
+  }
+  if (state.pending?.kind === 'guess') {
+    return (
+      `The human's reply answers your guess "${state.pending.text}". Record it with ` +
+      'twenty_questions_record_guess (leave guess out) and correct set to what they said.'
+    )
+  }
+  return null
 }
 
 export function registerTools(game: Game) {
@@ -85,31 +114,55 @@ export function registerTools(game: Game) {
             'true only when the human explicitly asks to start over. Without it a game already ' +
             'running is left alone and returned.',
         },
+        first_question: {
+          type: 'string',
+          description:
+            'The first yes/no question you will say out loud in this reply. The page keeps it so the ' +
+            'next turn knows what the human is answering.',
+        },
       },
     },
     annotations: { destructiveHint: true },
-    execute: async ({ restart }: { restart?: boolean } = {}) => {
+    execute: async ({ restart, first_question }: { restart?: boolean; first_question?: string } = {}) => {
+      const first = String(first_question ?? '').trim()
       // The assistant hands each turn to a sub-agent with no memory of the game, and it reaches
       // for this tool first; resetting on every turn threw away the answers so far.
-      const current = game.getState()
+      let current = game.getState()
       if (!restart && (current.status === 'playing' || current.status === 'out_of_questions')) {
+        if (!current.pending && first) current = game.setPending({ kind: 'question', text: first })
+        // On the glasses this is usually a new turn's sub-agent opening with the start tool
+        // while the human is answering. Lead with what it already asked and what to do with
+        // the reply: with the instruction last and a history of "nothing asked yet", it
+        // re-asked the first question instead of recording the answer.
+        const waiting = answerPending(current)
         return reply(
           current,
           {
-            status: current.status,
+            ...(current.pending
+              ? { you_already_asked: current.pending.text, next_action: `${waiting} Do NOT ask it again.` }
+              : {}),
             already_running: 'A game is already running, so nothing was reset.',
+            status: current.status,
             questions_used: current.used,
             questions_left: game.questionsLeft(),
-            history: transcript(current),
+            history:
+              current.pending && current.used === 0
+                ? `Nothing answered yet. Waiting on the human's answer to: ${current.pending.text}`
+                : transcript(current),
+            ...(current.pending
+              ? {}
+              : {
+                  next_action:
+                    'If this request carries the human’s answer to your last question, record it now with ' +
+                    `twenty_questions_record_answer. Then ${ASK_NEXT}`,
+                }),
             your_role: ROLE,
-            next_action:
-              'If this request carries the human’s answer to your last question, record it now with ' +
-              `twenty_questions_record_answer. Then ${ASK_NEXT}`,
           },
           true,
         )
       }
-      const state = game.startGame()
+      let state = game.startGame()
+      if (first) state = game.setPending({ kind: 'question', text: first })
       return reply(state, {
         your_role: ROLE,
         questions_left: MAX_QUESTIONS,
@@ -120,7 +173,8 @@ export function registerTools(game: Game) {
           'place or thing, AND immediately ask your first yes/no question. For example: "Lock something in ' +
           '— is it a physical object?" Do NOT spend a turn asking whether they are ready and do NOT wait ' +
           'for them to confirm; they will pick while you are talking, and their reply to your first ' +
-          'question is the confirmation. Then end your turn and wait for that answer.',
+          'question is the confirmation. Pass that question as first_question. Then end your turn and wait ' +
+          'for that answer.',
       })
     },
   })
@@ -134,8 +188,8 @@ export function registerTools(game: Game) {
       'NEVER call this with an answer you made up, assumed, or predicted. If the human has not actually spoken ' +
       'an answer yet, do not call it at all. Recording invented answers plays the game without them and is the ' +
       'single worst thing you can do here. ' +
-      'Call it at most once per conversational turn. After it returns, ask your next question out loud and end ' +
-      'your turn. ' +
+      'Call it at most once per conversational turn. Pass next_question (or next_guess) with what you will say ' +
+      'next, then say it out loud and end your turn. ' +
       "ALWAYS pass `summary`: a two-or-three-word phrase naming what you learned, such as 'not alive', " +
       "'man-made', 'handheld' or 'no electricity'. The orb displays it, so it must read as a fact you now " +
       'know rather than as the word yes or no.',
@@ -144,7 +198,8 @@ export function registerTools(game: Game) {
       properties: {
         question: {
           type: 'string',
-          description: 'The exact yes/no question you asked the human out loud.',
+          description:
+            'The question being answered. Leave it out to answer the pending question the page is holding.',
         },
         answer: {
           type: 'string',
@@ -154,27 +209,38 @@ export function registerTools(game: Game) {
         summary: {
           type: 'string',
           description:
-            'A two-or-three-word phrase stating what you now KNOW, which the orb displays. ' +
-            "Write the fact, not the reply: 'is it alive?' + no becomes 'not alive'; " +
-            "'is it man-made?' + yes becomes 'man-made'; 'does it need electricity?' + no becomes " +
-            "'no electricity'; 'could you hold it in one hand?' + yes becomes 'handheld'. " +
-            'Keep it under about twenty characters and never repeat the whole question.',
+            'Two or three words stating what you now KNOW, shown on the orb. Write the fact, not the ' +
+            "reply: 'is it alive?' + no becomes 'not alive'; 'could you hold it in one hand?' + yes " +
+            "becomes 'handheld'. Under about twenty characters.",
+        },
+        next_question: {
+          type: 'string',
+          description:
+            'The next yes/no question you will say out loud in this reply, so the next turn knows what ' +
+            'the human is answering.',
+        },
+        next_guess: {
+          type: 'string',
+          description:
+            'Instead of next_question: the thing you will guess out loud next, e.g. "a bicycle" for ' +
+            '"is it a bicycle?".',
         },
       },
-      required: ['question', 'answer'],
+      required: ['answer'],
     },
     execute: async ({
       question,
       answer,
       summary,
+      next_question,
+      next_guess,
     }: {
       question?: string
       answer?: string
       summary?: string
+      next_question?: string
+      next_guess?: string
     }) => {
-      if (!question || !String(question).trim()) {
-        return toolError('question is required — the exact yes/no question you asked the human.')
-      }
       // Require a real value rather than coercing: if the agent must report
       // what the human said, make fabrication structurally hard.
       const norm = normalizeAnswer(answer)
@@ -187,28 +253,48 @@ export function registerTools(game: Game) {
         )
       }
 
-      const outcome = game.recordAnswer(String(question), norm, summary)
+      const outcome = game.recordAnswer(question, norm, summary)
       if (!outcome.ok) {
         return toolError(
           outcome.error === 'no_game'
             ? 'No game in progress. Call twenty_questions_start_game first.'
-            : 'Game is over. Call twenty_questions_start_game for a new round.',
+            : outcome.error === 'no_question'
+              ? 'No question is pending, so pass question: the exact yes/no question the human answered.'
+              : 'Game is over. Call twenty_questions_start_game for a new round.',
         )
       }
+      const guessNext = String(next_guess ?? '').trim()
+      const askNext = String(next_question ?? '').trim()
+      const next: Pending | null = guessNext
+        ? { kind: 'guess', text: guessNext }
+        : askNext
+          ? { kind: 'question', text: askNext }
+          : null
+      // A replayed answer may carry the next question it was asked with, which
+      // is answered by now; holding that would swallow the human's next reply
+      // as a duplicate. It may fill an empty slot with a question not yet
+      // asked, but never replaces one still waiting for the human's answer.
+      const waiting = outcome.duplicate ? outcome.state.pending : null
+      const unrecorded = !!(waiting && next && questionKey(next.text) !== questionKey(waiting.text))
+      if (next && !waiting && !(outcome.duplicate && game.hasAsked(next))) {
+        outcome.state = game.setPending(next)
+      }
 
-      // Observed live: the agent narrates "let me log that", then logs the same
-      // question a second time in one turn, burning two questions for one
-      // answer. Swallow the duplicate as ok:true — an error here makes it
-      // apologise to the user about the scoreboard.
+      // Observed live: the agent logs the same question twice in one turn, and on
+      // the glasses each turn's sub-agent re-records every earlier answer it is
+      // handed. Swallow duplicates as ok:true — an error here makes it apologise
+      // to the user about the scoreboard.
       if (outcome.duplicate) {
         return reply(outcome.state, {
           recorded: outcome.answer,
           already_recorded: true,
           questions_left: game.questionsLeft(),
           your_role: ROLE,
-          turn_is_over: true,
-          message: 'You already recorded that exact question. Nothing double-counted.',
-          next_action: ASK_NEXT,
+          turn_is_over: !unrecorded,
+          message: 'That question is already in the transcript. Nothing double-counted.',
+          next_action: unrecorded
+            ? `Do not ask anything new yet. ${answerPending(outcome.state)}`
+            : ASK_NEXT,
         })
       }
 
@@ -232,7 +318,7 @@ export function registerTools(game: Game) {
           your_role: ROLE,
           turn_is_over: true,
           message: `Recorded. ${game.questionsLeft()} questions left.`,
-          next_action: ASK_NEXT,
+          next_action: guessNext ? GUESS_NEXT : ASK_NEXT,
         },
         true,
       )
@@ -249,16 +335,18 @@ export function registerTools(game: Game) {
     inputSchema: {
       type: 'object',
       properties: {
-        guess: { type: 'string', description: "The thing you guessed, e.g. 'a bicycle'." },
+        guess: {
+          type: 'string',
+          description: "The thing you guessed, e.g. 'a bicycle'. Leave it out to settle the pending guess.",
+        },
         correct: {
           type: 'boolean',
           description: 'Whether the HUMAN confirmed the guess was right.',
         },
       },
-      required: ['guess', 'correct'],
+      required: ['correct'],
     },
     execute: async ({ guess, correct }: { guess?: string; correct?: boolean }) => {
-      if (!guess || !String(guess).trim()) return toolError('guess is required.')
       if (typeof correct !== 'boolean') {
         return toolError(
           'correct must be true or false — whether the HUMAN confirmed your guess. ' +
@@ -267,12 +355,14 @@ export function registerTools(game: Game) {
         )
       }
 
-      const outcome = game.recordGuess(String(guess), correct)
+      const outcome = game.recordGuess(guess, correct)
       if (!outcome.ok) {
         return toolError(
           outcome.error === 'no_game'
             ? 'No game in progress. Call twenty_questions_start_game first.'
-            : 'Game is already over. Call twenty_questions_start_game for a new round.',
+            : outcome.error === 'no_guess'
+              ? 'No guess is pending, so pass guess: the thing you guessed.'
+              : 'Game is already over. Call twenty_questions_start_game for a new round.',
         )
       }
 
@@ -346,8 +436,9 @@ export function registerTools(game: Game) {
             ? {
                 your_role: ROLE,
                 next_action:
+                  answerPending(state) ??
                   'Use this to avoid repeating a question. If you have already recorded an answer ' +
-                  `this turn, ${ASK_NEXT}`,
+                    `this turn, ${ASK_NEXT}`,
               }
             : {}),
         },

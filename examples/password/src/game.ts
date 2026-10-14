@@ -35,6 +35,11 @@ export type Phase = 'idle' | 'half1' | 'intermission' | 'half2' | 'over'
 
 export type Feedback = 'correct' | 'violation' | 'skip' | null
 
+export interface Tally {
+  correct: number
+  fouls: number
+}
+
 /** A burned half-one card, and which of its words did it. */
 export interface Struck {
   secret: string
@@ -50,6 +55,12 @@ export interface GameState {
   youScore: number
   /** Points scored while the AGENT was the clue-giver (half two). */
   aiScore: number
+  /**
+   * What each half's score is made of: cards guessed and cards burned on a
+   * banned word. The score alone reads as "you got zero right" when two
+   * correct cards were cancelled by two fouls.
+   */
+  tally: { half1: Tally; half2: Tally }
   /** 1-based position of the current card within its half. */
   cardNumber: number
   cardsInHalf: number
@@ -148,6 +159,7 @@ export class Game {
       secondsLeft: HALF_SECONDS,
       youScore: 0,
       aiScore: 0,
+      tally: { half1: { correct: 0, fouls: 0 }, half2: { correct: 0, fouls: 0 } },
       cardNumber: 0,
       cardsInHalf: CARDS_PER_HALF,
       card: null,
@@ -358,8 +370,14 @@ export class Game {
   }
 
   private award(points: number) {
-    if (this.state.phase === 'half1') this.set({ youScore: this.state.youScore + points })
-    else this.set({ aiScore: this.state.aiScore + points })
+    const half = this.state.phase === 'half1' ? 'half1' : 'half2'
+    const was = this.state.tally[half]
+    const tally = {
+      ...this.state.tally,
+      [half]: points > 0 ? { ...was, correct: was.correct + 1 } : { ...was, fouls: was.fouls + 1 },
+    }
+    if (half === 'half1') this.set({ youScore: this.state.youScore + points, tally })
+    else this.set({ aiScore: this.state.aiScore + points, tally })
   }
 
   private reject(error: Fail): Outcome {
