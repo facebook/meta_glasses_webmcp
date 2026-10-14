@@ -7,6 +7,15 @@ on:
     branches: [main]
 
 jobs:
+  landing-page:
+    name: Test the landing page and site assembly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test .github/pages/assemble-site.test.mjs
   example:
     name: Build and test the ${{ matrix.example }} example
     runs-on: ubuntu-latest
