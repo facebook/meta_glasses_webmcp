@@ -172,6 +172,78 @@ describe('tool round-trips', () => {
     expect(after.completed_section.count).toBe(before.completed_section.count + 1);
   });
 
+  it.each(['id', 'title'])('sets only Buy milk notes by %s without navigating', async (reference) => {
+    const app = new TodoList();
+    app.reset();
+    registerTodoTools(app);
+    const added = JSON.parse((await executeTool('todo_add_item', { title: 'Buy milk' })) as string) as {
+      id: string;
+    };
+    const before = await read();
+    expect(before.items.find((item) => item.id === added.id)).toMatchObject({ title: 'Buy milk', detail: '' });
+    const expectedItems = before.items.map((item) =>
+      item.id === added.id ? { ...item, detail: 'get the 2% one' } : item,
+    );
+
+    expect(
+      await executeTool('todo_set_detail', {
+        item: reference === 'id' ? added.id : 'buy milk',
+        detail: 'get the 2% one',
+      }),
+    ).toBe('ok');
+    expect(await read()).toEqual({ ...before, items: expectedItems });
+
+    expect(app.open(added.id).ok).toBe(true);
+    expect(await read()).toEqual({
+      ...before,
+      view: 'detail',
+      showing: { id: added.id, title: 'Buy milk' },
+      items: expectedItems,
+    });
+    expect(app.home().ok).toBe(true);
+    expect(await read()).toEqual({ ...before, items: expectedItems });
+    expect(app.open(added.id).ok).toBe(true);
+    expect((await read()).items).toEqual(expectedItems);
+  });
+
+  it.each(['replacement notes', ''])('replaces existing notes with %j rather than appending', async (detail) => {
+    const app = new TodoList();
+    app.reset();
+    registerTodoTools(app);
+    const added = JSON.parse(
+      (await executeTool('todo_add_item', { title: 'Buy milk', detail: 'old notes' })) as string,
+    ) as { id: string };
+    const before = await read();
+
+    expect(await executeTool('todo_set_detail', { item: added.id, detail })).toBe('ok');
+    expect(await read()).toEqual({
+      ...before,
+      items: before.items.map((item) => (item.id === added.id ? { ...item, detail } : item)),
+    });
+  });
+
+  it('refuses ambiguous notes edits and accepts the specific item ID', async () => {
+    const app = new TodoList();
+    app.reset();
+    registerTodoTools(app);
+    const added = JSON.parse((await executeTool('todo_add_items', { items: 'Buy milk, Buy milk' })) as string) as {
+      ids: string[];
+    };
+    const before = await read();
+
+    expect(await executeTool('todo_set_detail', { item: 'buy milk', detail: 'get the 2% one' })).toMatchObject({
+      isError: true,
+    });
+    expect(await read()).toEqual(before);
+    expect(await executeTool('todo_set_detail', { item: added.ids[1], detail: 'get the 2% one' })).toBe('ok');
+    expect(await read()).toEqual({
+      ...before,
+      items: before.items.map((item) =>
+        item.id === added.ids[1] ? { ...item, detail: 'get the 2% one' } : item,
+      ),
+    });
+  });
+
   it('returns errors as values for bad references', async () => {
     registerTodoTools(new TodoList());
     const answer = (await executeTool('todo_check_items', { item: 'no such thing' })) as {
