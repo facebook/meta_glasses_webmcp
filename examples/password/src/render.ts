@@ -217,19 +217,21 @@ function strikeCard(struck: Struck, done: () => void) {
 /**
  * A won word: each letter turns over left to right and lands green, then `done`.
  *
- * Both halves spin the word in the same face: the heavy sans at the size half
- * one shows its words. Half two's blanks are monospace and smaller, and drawing
- * the win into those slots made the same moment look different in each half.
+ * `hidden` is half two, where the human has spent the card looking at a row of
+ * blanks — the letters are drawn back into those same slots, spaces and all, so
+ * the answer arrives where they were staring rather than somewhere new. In half
+ * one the word was on the card the whole time and just spins where it sits.
  *
  * This replaces `revealWord` on a correct guess rather than following it: the
  * spin already shows the word, and playing both put a two-second pause between
  * getting one right and the next card.
  */
-function celebrate(word: string, done: () => void) {
+function celebrate(word: string, hidden: boolean, done: () => void) {
   eyebrow.textContent = 'Got it'
   setBanned([], null)
 
-  const letters = setSecretLetters(word, false, 44)
+  const display = hidden ? word.split('').join(' ') : word
+  const letters = setSecretLetters(display, hidden, hidden ? 27 : 44)
 
   const instant = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   if (instant) {
@@ -362,7 +364,7 @@ export function render(state: GameState) {
     // never saw is filled into its blanks. A win in half two is both the first
     // and the third, and the spin already shows the word — so it wins.
     const settle = () => settleCard(state)
-    if (state.solved) celebrate(state.solved, settle)
+    if (state.solved) celebrate(state.solved, Boolean(state.reveal), settle)
     else if (state.struck) strikeCard(state.struck, () => (state.reveal ? revealWord(state.reveal, state.feedback, settle) : settle()))
     else if (state.reveal) revealWord(state.reveal, state.feedback, settle)
     else settle()
