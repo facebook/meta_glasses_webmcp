@@ -10,7 +10,6 @@ import {
   type GameState,
   type Hint,
   type MoveResult,
-  cardCode,
   deal,
   drawFromStock,
   hint,
@@ -96,27 +95,4 @@ export class Game {
   isWon(): boolean {
     return isWon(this.state);
   }
-}
-
-/** Compact ASCII rendering of the whole board, for agent tool output. */
-export function asciiBoard(state: GameState): string {
-  const lines: string[] = [];
-
-  const foundations = state.foundations
-    .map((f) => (f.length ? cardCode(f[f.length - 1]) : '--'))
-    .map((c, i) => `F${i + 1}:${c}`)
-    .join('  ');
-  lines.push(`Foundations: ${foundations}`);
-
-  const wasteTop = state.waste.length ? cardCode(state.waste[state.waste.length - 1]) : '--';
-  lines.push(`Stock: ${state.stock.length}   Waste: ${wasteTop}`);
-
-  lines.push('Tableau:');
-  for (let c = 0; c < state.tableau.length; c++) {
-    const pile = state.tableau[c];
-    const cells = pile.map((card) => (card.faceUp ? cardCode(card) : '##'));
-    lines.push(`  T${c + 1}: ${cells.length ? cells.join(' ') : '(empty)'}`);
-  }
-
-  return lines.join('\n');
 }

@@ -25,7 +25,7 @@
 // Descriptions are weak, tool results are strong: the freshest tool output is
 // what the model actually steers on.
 import { registerTool } from './webmcp'
-import { MAX_QUESTIONS, normalizeAnswer, strategyNote } from './engine'
+import { MAX_QUESTIONS, normalizeAnswer, questionKey, strategyNote } from './engine'
 import { transcript, type Game, type GameState } from './game'
 
 const ROLE =
@@ -44,10 +44,20 @@ const ASK_NEXT =
 
 const OPENING_PLAN =
   'Aim to halve the possibilities with every question, so twenty questions can separate about a million ' +
-  'things. A strong opening ladder: 1) Is it a physical object? 2) Is it alive? 3) Is it man-made? ' +
-  '4) Could you hold it in one hand? 5) Is it found mostly indoors? 6) Does it need power? ' +
-  '7) Do you use it to do a job? 8) Is it mostly metal? Only after those narrow the field should you ' +
-  'ask about specific rooms or name specific objects. Never walk through rooms or categories one at a time.'
+  'things. Open with "Is it a person, a place, or a thing?" — the one question that is not yes/no. ' +
+  'For a thing: Is it alive? Is it man-made? Could you hold it in one hand? Is it found mostly indoors? ' +
+  'Does it need power? Do you use it to do a job? Is it mostly metal? For a person: Are they real? ' +
+  'Alive today? Famous? An entertainer? For a place: Is it natural? On Earth? A city? Only after those ' +
+  'narrow the field should you name specific candidates. Never walk through rooms or categories one at a time.'
+
+/** The opening question's answers. They are recorded as a yes with the category as the caption. */
+const CATEGORY_RE = /^(?:it'?s |it is )?(?:a |an )?(person|place|thing)\b/i
+
+/**
+ * The opening answer, held so coaching fits it: the strategy axes (man-made,
+ * metal, power) are all about objects and would steer a person or a place wrong.
+ */
+let category: 'person' | 'place' | 'thing' | null = null
 
 function toolError(reason: string, withRole = false) {
   const body = withRole ? `${reason}\n\n${ROLE}` : reason
@@ -56,11 +66,16 @@ function toolError(reason: string, withRole = false) {
 
 /** Serialise a result, folding in the coaching the transcript supports. */
 function reply(state: GameState, extra: Record<string, unknown>, coach = false) {
-  const note = coach ? strategyNote(state.asked) : null
+  const note = coach && (category === null || category === 'thing') ? strategyNote(state.asked) : null
   return JSON.stringify({ ok: true, ...extra, ...(note ? { strategy: note } : {}) })
 }
 
 export function registerTools(game: Game) {
+  // An empty transcript is a new round however it started, so the category goes with it.
+  game.subscribe((state) => {
+    if (!state.asked.length) category = null
+  })
+
   registerTool({
     name: 'twenty_questions_start_game',
     description:
@@ -85,8 +100,9 @@ export function registerTools(game: Game) {
         message: 'Scoreboard reset. 20 questions.',
         next_action:
           'Say ONE short spoken turn that does BOTH of these together: tell them to lock in any person, ' +
-          'place or thing, AND immediately ask your first yes/no question. For example: "Lock something in ' +
-          '— is it a physical object?" Do NOT spend a turn asking whether they are ready and do NOT wait ' +
+          'place or thing, AND immediately ask your first question, which is which of the three it is. For ' +
+          'example: "Lock something in — is it a person, a place, or a thing?" Record their reply with ' +
+          "answer 'person', 'place' or 'thing'. Do NOT spend a turn asking whether they are ready and do NOT wait " +
           'for them to confirm; they will pick while you are talking, and their reply to your first ' +
           'question is the confirmation. Then end your turn and wait for that answer.',
       })
@@ -116,8 +132,10 @@ export function registerTools(game: Game) {
         },
         answer: {
           type: 'string',
-          enum: ['yes', 'no', 'maybe'],
-          description: 'What the HUMAN actually said, normalised to yes, no, or maybe.',
+          enum: ['yes', 'no', 'maybe', 'person', 'place', 'thing'],
+          description:
+            'What the HUMAN actually said, normalised to yes, no, or maybe — or person, place, or thing for ' +
+            'the opening "is it a person, a place, or a thing?" question.',
         },
         summary: {
           type: 'string',
@@ -145,10 +163,19 @@ export function registerTools(game: Game) {
       }
       // Require a real value rather than coercing: if the agent must report
       // what the human said, make fabrication structurally hard.
-      const norm = normalizeAnswer(answer)
+      // Only the opener takes a category: the first question, or that same question replayed word for word,
+      // which is then a duplicate. A later "it's a thing" must not reset it.
+      const first = game.getState().asked[0]
+      const opening = !first || questionKey(first.question) === questionKey(question)
+      const picked = opening
+        ? (CATEGORY_RE.exec(String(answer ?? '').trim())?.[1]?.toLowerCase() as typeof category)
+        : null
+      const norm = picked ? 'yes' : normalizeAnswer(answer)
+      if (picked) summary ||= `a ${picked}`
       if (!norm) {
         return toolError(
-          "answer must be what the HUMAN actually said, as 'yes', 'no', or 'maybe'. " +
+          "answer must be what the HUMAN actually said, as 'yes', 'no', or 'maybe' (or 'person', 'place', " +
+            "or 'thing' for the opening question). " +
             'If they said something else, ask them to answer yes or no and record it next turn. ' +
             'Do not guess on their behalf.',
           true,
@@ -156,6 +183,9 @@ export function registerTools(game: Game) {
       }
 
       const outcome = game.recordAnswer(String(question), norm, summary)
+      // A replayed opener is a duplicate and records nothing, so it must not change the category either.
+      // The category it would repeat was already set when the opener was first recorded.
+      if (picked && outcome.ok && !outcome.duplicate) category = picked
       if (!outcome.ok) {
         return toolError(
           outcome.error === 'no_game'

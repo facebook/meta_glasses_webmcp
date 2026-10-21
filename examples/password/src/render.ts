@@ -76,6 +76,12 @@ let revealTimer: number | null = null
 let strikeTimer: number | null = null
 /** One per letter plus the finish, so an interrupted win can be cancelled. */
 let spinTimers: number[] = []
+/**
+ * The state to flip to once the outgoing word's spin, strike or reveal is done,
+ * or null when none is playing. A later state that brings no outgoing word of
+ * its own replaces this instead of cutting the animation short.
+ */
+let settleTo: GameState | null = null
 
 /**
  * Paint the banned list. `struck` names the one entry to mark, which is how a
@@ -99,7 +105,7 @@ function setBanned(items: string[], hint: string | null, struck: string | null =
 function setSecret(text: string, mono: boolean, maxPx: number) {
   secretEl.textContent = text
   secretEl.classList.toggle('blanks', mono)
-  secretEl.classList.remove('filled')
+  secretEl.classList.remove('filled', 'struck')
   secretEl.style.fontSize = `${fitFont(text, maxPx, mono ? 0.68 : 0.7)}px`
 }
 
@@ -110,7 +116,7 @@ function setSecret(text: string, mono: boolean, maxPx: number) {
  */
 function setSecretLetters(display: string, mono: boolean, maxPx: number): HTMLElement[] {
   secretEl.classList.toggle('blanks', mono)
-  secretEl.classList.remove('filled')
+  secretEl.classList.remove('filled', 'struck')
   secretEl.style.fontSize = `${fitFont(display, maxPx, mono ? 0.68 : 0.7)}px`
 
   const nodes: Node[] = []
@@ -200,9 +206,13 @@ function flip(state: GameState) {
  * that makes the next card go better.
  */
 function strikeCard(struck: Struck, done: () => void) {
-  eyebrow.textContent = 'Card burned'
+  // Saying part of the secret ("scare" on SCARECROW) burns the card too, but
+  // the secret is not in the banned list, so it is the word that gets struck.
+  const own = struck.word === struck.secret
+  eyebrow.textContent = own ? `"${struck.said}" is part of the word` : 'Card burned'
   setSecret(struck.secret, false, 44)
-  setBanned(struck.banned, null, struck.word)
+  if (own) secretEl.classList.add('struck')
+  setBanned(struck.banned, null, own ? null : struck.word)
 
   const instant = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   strikeTimer = globalThis.setTimeout(
@@ -217,21 +227,19 @@ function strikeCard(struck: Struck, done: () => void) {
 /**
  * A won word: each letter turns over left to right and lands green, then `done`.
  *
- * `hidden` is half two, where the human has spent the card looking at a row of
- * blanks — the letters are drawn back into those same slots, spaces and all, so
- * the answer arrives where they were staring rather than somewhere new. In half
- * one the word was on the card the whole time and just spins where it sits.
+ * Both halves spin the word in the same face: the heavy sans at the size half
+ * one shows its words. Half two's blanks are monospace and smaller, and drawing
+ * the win into those slots made the same moment look different in each half.
  *
  * This replaces `revealWord` on a correct guess rather than following it: the
  * spin already shows the word, and playing both put a two-second pause between
  * getting one right and the next card.
  */
-function celebrate(word: string, hidden: boolean, done: () => void) {
+function celebrate(word: string, done: () => void) {
   eyebrow.textContent = 'Got it'
   setBanned([], null)
 
-  const display = hidden ? word.split('').join(' ') : word
-  const letters = setSecretLetters(display, hidden, hidden ? 27 : 44)
+  const letters = setSecretLetters(word, false, 44)
 
   const instant = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   if (instant) {
@@ -352,19 +360,32 @@ export function render(state: GameState) {
   // scoreboard) waits behind whichever applies.
   if (state.flipToken !== lastToken) {
     lastToken = state.flipToken
+    // Half two opening on the agent's first clue is a repaint with no outgoing
+    // word. It can land while half one's last card is still spinning or being
+    // struck, and must wait for that rather than cut it off.
+    if (settleTo && !state.solved && !state.struck && !state.reveal) {
+      settleTo = state
+      return
+    }
     if (state.feedback) flash(state.feedback)
     for (const pending of [revealTimer, strikeTimer]) if (pending !== null) clearTimeout(pending)
     for (const pending of spinTimers) clearTimeout(pending)
     revealTimer = null
     strikeTimer = null
     spinTimers = []
+    settleTo = null
 
     // Three things can hold the outgoing face up, and only ever one of them: a
     // won word spins itself green, a burned one is struck, and a word the human
     // never saw is filled into its blanks. A win in half two is both the first
     // and the third, and the spin already shows the word — so it wins.
-    const settle = () => settleCard(state)
-    if (state.solved) celebrate(state.solved, Boolean(state.reveal), settle)
+    const settle = () => {
+      const target = settleTo ?? state
+      settleTo = null
+      settleCard(target)
+    }
+    if (state.solved || state.struck || state.reveal) settleTo = state
+    if (state.solved) celebrate(state.solved, settle)
     else if (state.struck) strikeCard(state.struck, () => (state.reveal ? revealWord(state.reveal, state.feedback, settle) : settle()))
     else if (state.reveal) revealWord(state.reveal, state.feedback, settle)
     else settle()

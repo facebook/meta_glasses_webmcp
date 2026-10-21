@@ -53,8 +53,10 @@ compact notation: rank then suit, such as `QH` (Queen of Hearts), `10S`, or
 `AC`. Illegal moves come back as tool errors carrying the reason, never
 thrown exceptions.
 
-- `solitaire_draw` — `{}`. Turns one card from the stock onto the waste, or
-  recycles the waste into the stock when the stock is empty.
+- `solitaire_draw` — `{until_playable?}`. Turns one card from the stock onto the
+  waste, or recycles the waste into the stock when the stock is empty. With
+  `until_playable: true` it keeps drawing until the waste card can be played or
+  the whole stock has been gone through once.
 - `solitaire_move` — `{from, to, count?}`. Moves a card or run between
   locations. `count` sets the run length for tableau-to-tableau moves
   (default 1). A move to any foundation lands on the right suit pile.
@@ -65,8 +67,10 @@ thrown exceptions.
 
 Every tool returns the same JSON snapshot: `status`, `foundations` (top card
 and count), `tableau` (face-up cards plus a face-down count per column),
-`waste` (top card and count), `stock` size, and an `ascii` rendering of the
-whole board. `solitaire_hint` adds a `hint` field.
+`waste` (top card and count), and `stock` size, with cards named in words
+("ace of clubs"). It leads with `say`, one plain sentence about what just
+happened, and `speech`, which asks the agent to speak that and not read the
+board back. `solitaire_hint` adds a `hint` field.
 
 ## Read the code
 

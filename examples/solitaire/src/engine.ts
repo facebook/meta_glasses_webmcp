@@ -61,6 +61,22 @@ export function cardCode(card: Card): string {
   return `${rankLabel(card.rank)}${card.suit}`;
 }
 
+const RANK_NAMES = ['', 'ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king'];
+const SUIT_NAMES: Record<Suit, string> = { S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' };
+
+/** The card as it is said out loud, e.g. "queen of hearts". */
+export function cardName(card: Pick<Card, 'rank' | 'suit'>): string {
+  return `${RANK_NAMES[card.rank]} of ${SUIT_NAMES[card.suit]}`;
+}
+
+/** `cardName` for a `cardCode`; anything that is not a card code comes back unchanged. */
+export function cardNameFromCode(code: string): string {
+  const m = /^(A|J|Q|K|10|[2-9])([SHDC])$/.exec(code);
+  if (!m) return code;
+  const rank = ({ A: 1, J: 11, Q: 12, K: 13 } as Record<string, number>)[m[1]] ?? Number(m[1]);
+  return cardName({ rank, suit: m[2] as Suit });
+}
+
 const SUIT_SYMBOLS: Record<Suit, string> = { S: '♠', H: '♥', D: '♦', C: '♣' };
 
 export function suitSymbol(suit: Suit): string {

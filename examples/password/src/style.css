@@ -321,8 +321,10 @@ body {
  * rule is painted on from transparent rather than drawn across — one property,
  * no pseudo-element, and it tracks the text width for free however long the
  * word is. The static declarations are the resting state, which is also what
- * reduced motion gets. */
-.banned li.struck {
+ * reduced motion gets. The secret takes the same strike when part of it was
+ * said, since it is not in the banned list. */
+.banned li.struck,
+.secret.struck {
   color: var(--bad);
   text-decoration: line-through;
   text-decoration-thickness: 2px;
@@ -360,7 +362,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .banned li.struck {
+  .banned li.struck,
+  .secret.struck {
     animation: none;
   }
 }

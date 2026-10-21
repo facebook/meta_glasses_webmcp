@@ -6,11 +6,15 @@
     <!--
       The title is free context: agent hosts inject it into the system prompt,
       so it carries the role assignment. This game's direction is the opposite
-      of the usual one, and saying so here costs nothing.
+      of the usual one, and saying so here costs nothing. The assistant's
+      top-level model sees only this and the tool names, and it answered a
+      misheard reply ("it's still live") itself instead of passing it on, so the
+      title says every answer goes to the page. Keep it under 256 characters.
     -->
     <title>
-      20 Questions — the HUMAN is thinking of a secret; YOU the assistant ask THEM yes/no questions
-      and guess it
+      20 Questions — the HUMAN is thinking of a secret; YOU ask THEM questions and guess it. The page
+      keeps the count: send it every answer the human gives, even one you misheard, and never just reply
+      yourself.
     </title>
   </head>
   <body>

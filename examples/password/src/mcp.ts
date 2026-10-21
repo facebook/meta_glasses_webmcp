@@ -196,15 +196,19 @@ function reply(state: GameState, extra: Record<string, unknown>) {
  * the card's own message rather than replacing it. Spreading `halfTail` over
  * the top instead swallowed the lead, so on the sixth card the agent was told
  * the half had ended but never that it had just got the word.
+ *
+ * The same goes for what the agent says. `opener` is the card's own line in a
+ * few words ("saying the word you got") and leads the half-time line; without
+ * it the last card of half one went by without the word ever being said.
  */
-function cardTail(lead: string, nextAction: string, ended: boolean, state: GameState) {
+function cardTail(lead: string, nextAction: string, ended: boolean, state: GameState, opener: string) {
   if (!ended) return { message: lead, next_action: nextAction }
-  const tail = halfTail(state)
+  const tail = halfTail(state, opener)
   return { ...tail, message: `${lead} ${tail.message}` }
 }
 
 /** Shared tail for "the half just ended" results. */
-function halfTail(state: GameState) {
+function halfTail(state: GameState, opener = '') {
   if (state.phase === 'over') {
     const { youScore, aiScore } = state
     const verdict =
@@ -217,8 +221,8 @@ function halfTail(state: GameState) {
       game_over: true,
       message: `Full time. Their clues scored ${youScore}, yours scored ${aiScore}. ${verdict}`,
       next_action:
-        'Read the final score out loud in one short line and say who clued better. Stop calling tools ' +
-        'unless they ask for another game.',
+        `${opener ? `Start by ${opener}, then read` : 'Read'} the final score out loud in one short ` +
+        'line and say who clued better. Stop calling tools unless they ask for another game.',
     }
   }
   return {
@@ -228,10 +232,10 @@ function halfTail(state: GameState) {
       `Half one is done. Their clues scored ${state.youScore}. The clock is STOPPED, and the page has ` +
       'already dealt you the first word of half two — it is in your_word. You do not have to ask for it.',
     next_action: clueThenSpeak(
-      'gives their half-one score, says you are the one describing now, and delivers that cleared clue. ' +
-        'One breath, all three — do not announce the handover and then stop, or they are left waiting on ' +
-        'a card with nothing to go on. Half two’s clock starts when the clue clears, so take the time you ' +
-        'need on it',
+      `${opener ? `starts by ${opener}, then ` : ''}gives their half-one score, says you are the one ` +
+        'describing now, and delivers that cleared clue. One breath, all of it — do not announce the ' +
+        'handover and then stop, or they are left waiting on a card with nothing to go on. Half two’s ' +
+        'clock starts when the clue clears, so take the time you need on it',
     ),
   }
 }
@@ -358,30 +362,51 @@ export function registerTools(game: Game) {
       if (!out.ok) return explain(out.error!, out.state)
 
       if (out.violation) {
+        // Part of the secret itself ("scare" on SCARECROW) is a foul too. The
+        // card is dead, so naming the word now gives nothing away — and without
+        // it "you said SCARECROW" is a word nobody said.
+        const said = out.said ?? out.violation
+        const own = out.violation === out.state.struck?.secret
+        const call = own
+          ? `"${said}" is part of the word, which was ${out.violation}`
+          : `they said the banned word "${out.violation}"`
         return reply(out.state, {
           result: 'foul',
           banned_word_they_said: out.violation,
+          ...(own ? { they_said: said } : {}),
           ...cardTail(
-            `They said "${out.violation}". That card is burned and they lose a point.`,
+            own
+              ? `They said "${said}", which is part of the word itself — it was ${out.violation}. ` +
+                  'That card is burned and they lose a point.'
+              : `They said "${out.violation}". That card is burned and they lose a point.`,
             `Say ONE short line out loud calling the foul and naming the word — something like "ah, ` +
-              `you said ${out.violation} — next card". The page is striking "${out.violation}" off ` +
-              'the dead card as you speak and the next one flips up behind it, so name it rather ' +
-              'than just saying they slipped. Then END YOUR TURN and listen.',
+              (own
+                ? `${said} is part of the word — it was ${out.violation}. Next card". `
+                : `you said ${out.violation} — next card". `) +
+              `The page is striking "${out.violation}" off the dead card as you speak and the next one ` +
+              'flips up behind it, so name it rather than just saying they slipped. Then END YOUR TURN ' +
+              'and listen.',
             Boolean(out.halfEnded),
             out.state,
+            `calling the foul: ${call}`,
           ),
         })
       }
 
       if (out.correct) {
+        const word = out.state.solved ?? String(guess)
         return reply(out.state, {
           result: 'correct',
+          word_you_got: word,
           ...cardTail(
-            out.halfEnded ? 'You got it.' : 'You got it. A new card is already up on their screen.',
+            out.halfEnded
+              ? `You got it — it was ${word}.`
+              : `You got it — it was ${word}. A new card is already up on their screen.`,
             'Say the word out loud so they know you have it, in one short excited line, and tell them ' +
               'the next card is up. Then END YOUR TURN and listen.',
             Boolean(out.halfEnded),
             out.state,
+            `saying "${word}" out loud, excited that you got it`,
           ),
         })
       }
@@ -474,6 +499,7 @@ export function registerTools(game: Game) {
             ),
             Boolean(out.halfEnded),
             out.state,
+            'conceding the dead card in a few words',
           ),
         })
       }
@@ -551,6 +577,7 @@ export function registerTools(game: Game) {
             clueThenSpeak('confirms they got that one, and delivers the clue for the next'),
             Boolean(out.halfEnded),
             out.state,
+            'telling them they got that last one',
           ),
         })
       }
@@ -605,6 +632,7 @@ export function registerTools(game: Game) {
               ),
           Boolean(out.halfEnded),
           out.state,
+          `saying the word was "${word}"`,
         ),
       })
     },

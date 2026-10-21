@@ -24,6 +24,8 @@ import {
   dealHalves,
   findViolation,
   isCorrectGuess,
+  tokens,
+  violates,
 } from './engine.ts'
 
 /**
@@ -41,6 +43,11 @@ export interface Struck {
   banned: string[]
   /** The deck's spelling of the banned word that was said. */
   word: string
+  /**
+   * What was actually spoken. Usually the same word, but when it is part of the
+   * secret itself ("scare" on SCARECROW) the card has to show which part.
+   */
+  said: string
 }
 
 export interface GameState {
@@ -121,6 +128,8 @@ export interface Outcome {
   error?: Fail
   /** The banned word that was said, when one was. */
   violation?: string
+  /** The spoken word that tripped `violation`. */
+  said?: string
   correct?: boolean
   /** Set when this action closed the card out. */
   cardBurned?: boolean
@@ -382,6 +391,7 @@ export class Game {
 
     const violation = findViolation(heard, card)
     if (violation) {
+      const said = tokens(heard).find((token) => violates(token, violation)) ?? violation
       this.award(SCORE_VIOLATION)
       this.note(`Foul — "${violation}". ${card.secret} burned.`)
       // The card they were looking at goes with the transition so the renderer
@@ -392,8 +402,9 @@ export class Game {
         secret: card.secret,
         banned: card.banned,
         word: violation,
+        said,
       })
-      return { ok: true, violation, cardBurned: true, halfEnded, state: this.state }
+      return { ok: true, violation, said, cardBurned: true, halfEnded, state: this.state }
     }
 
     if (isCorrectGuess(guess, card.secret)) {

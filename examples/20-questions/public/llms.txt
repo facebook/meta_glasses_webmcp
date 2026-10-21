@@ -28,7 +28,7 @@ A wrong guess is free — it does not spend a question — so guess as soon as y
 # Actions
 
 - twenty_questions_start_game — reset the scoreboard to 20. Only when the human actually asks to play; a greeting is not a request for a game.
-- twenty_questions_record_answer {question, answer, summary} — log the question you asked and what the human answered (yes / no / maybe). Always pass `summary`: a two-or-three-word phrase naming what you now know, like 'not alive' or 'handheld'. The orb displays it.
+- twenty_questions_record_answer {question, answer, summary} — log the question you asked and what the human answered (yes / no / maybe, or person / place / thing for the opening question). Always pass `summary`: a two-or-three-word phrase naming what you now know, like 'not alive' or 'handheld'. The orb displays it.
 - twenty_questions_record_guess {guess, correct} — log a guess and whether the human confirmed it. Say the guess out loud first and wait for their answer; never set `correct` yourself.
 - twenty_questions_read_state — read status, counts, and the full transcript without spending a question.
 - twenty_questions_end_game {secret} — end the round and record what it turned out to be, after they tell you.
@@ -38,6 +38,6 @@ Every result carries `next_action`. Follow it literally — it tells you when to
 
 # Strategy
 
-Halve the field with every question; twenty halvings separate about a million things. Open with the broad axes: physical object, alive, man-made, fits in one hand, found indoors, needs power, used as a tool, mostly metal.
+Halve the field with every question; twenty halvings separate about a million things. Open with "Is it a person, a place, or a thing?", then the broad axes. For a thing: alive, man-made, fits in one hand, found indoors, needs power, used as a tool, mostly metal. For a person: real, alive today, famous. For a place: natural, on Earth, a city.
 
 Do not walk through rooms or categories one at a time. "Is it in the kitchen? the bedroom? the bathroom?" eliminates a sliver per question and loses games that a size-or-material question wins by question eight. Results include a `strategy` field when the page notices you enumerating — it is computed from your own transcript, so trust it.

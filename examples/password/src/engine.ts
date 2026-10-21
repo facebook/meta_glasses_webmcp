@@ -25,9 +25,14 @@ export const MAX_CLUE_REJECTS = 3
 export const SCORE_CORRECT = 1
 export const SCORE_VIOLATION = -1
 
-/** Lowercase, strip punctuation, collapse whitespace. */
+/**
+ * Lowercase, drop accents, strip punctuation, collapse whitespace. Accents go
+ * so that PIÑATA matches whether the agent spells it "piñata" or "pinata".
+ */
 export function normalize(text: string): string {
   return text
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
     .toLowerCase()
     .replace(/[^a-z0-9\s]+/g, ' ')
     .replace(/\s+/g, ' ')
@@ -96,7 +101,7 @@ export function isCorrectGuess(heard: string, secret: string): boolean {
 export function revealMask(secret: string, shown: number): string {
   return secret
     .split('')
-    .map((ch, i) => (i < shown || !/[a-z]/i.test(ch) ? ch : '_'))
+    .map((ch, i) => (i < shown || !/\p{L}/u.test(ch) ? ch : '_'))
     .join(' ')
 }
 

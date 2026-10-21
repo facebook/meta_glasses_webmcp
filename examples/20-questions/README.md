@@ -155,7 +155,7 @@ only way to get that is to profile on the glasses.
 | Tool | Input | Description |
 |------|-------|-------------|
 | `twenty_questions_start_game` | `{}` | Reset the scoreboard to 20 |
-| `twenty_questions_record_answer` | `{ question, answer, summary? }` | Log a question and what the human answered |
+| `twenty_questions_record_answer` | `{ question, answer, summary? }` | Log a question and what the human answered: yes, no, maybe, or person, place, thing for the opener |
 | `twenty_questions_record_guess` | `{ guess, correct }` | Log a guess and whether they confirmed it |
 | `twenty_questions_read_state` | `{}` | Read status, counts, and transcript without spending a question |
 | `twenty_questions_end_game` | `{ secret? }` | End the round and record what it was |

@@ -119,7 +119,7 @@ for (const [name, pool] of pools) {
 }
 
 for (const c of DECK) {
-  if (!/^[A-Z]+$/.test(c.secret)) err(`"${c.secret}" is not a single all-caps word`);
+  if (!/^\p{Lu}+$/u.test(c.secret)) err(`"${c.secret}" is not a single all-caps word`);
   if (c.banned.length !== 5) err(`"${c.secret}" has ${c.banned.length} banned words, expected 5`);
   const lower = c.banned.map((b) => b.toLowerCase());
   if (new Set(lower).size !== lower.length) err(`"${c.secret}" repeats a banned word`);

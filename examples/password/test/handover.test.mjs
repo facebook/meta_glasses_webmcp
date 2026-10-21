@@ -242,9 +242,11 @@ check('and the strike does not survive the flip', struckItems().length === 0);
 console.log('\nHalf one — play the rest out so half two can be tested');
 
 let lastOfHalfOne = null;
+let lastSecretOfHalfOne = '';
 // Three left: the foul above burned card one and advanced the hand.
 for (let i = 0; i < 3; i++) {
   const secret = game.getState().card.secret;
+  lastSecretOfHalfOne = secret;
   lastOfHalfOne = await call('password_guess_word', { heard: CLEAN, guess: secret });
   check(`card ${i + 2} scored`, lastOfHalfOne.result === 'correct', JSON.stringify(lastOfHalfOne).slice(0, 200));
 }
@@ -265,6 +267,11 @@ check('the page marks the card as already drawn', game.getState().drawn === true
 check(
   'the agent is told to clear a clue before it speaks',
   /password_say_clue/.test(lastOfHalfOne.next_action ?? ''),
+  lastOfHalfOne.next_action,
+);
+check(
+  'the half-time line starts with the word it just got',
+  lastOfHalfOne.next_action?.includes(`saying "${lastSecretOfHalfOne}" out loud`),
   lastOfHalfOne.next_action,
 );
 check(
@@ -387,6 +394,73 @@ check(
 // dealt a new word and left the previous one up. The demo recorder found this
 // by re-dealing 200 times and reading the same word off the page every time.
 // Last, because it starts rounds: the tests above assert on an idle page.
+console.log('\nHalf one — saying part of the word burns the card, and the word is struck');
+
+await call('password_new_game');
+// Cards are dealt at random, so skip to one long enough to have a proper
+// prefix that still clears the four-character floor.
+for (let i = 0; i < 3 && game.getState().card.secret.length < 5; i++) await call('password_skip_card');
+const partCard = game.getState().card;
+const part = partCard.secret.slice(0, partCard.secret.length - 1).toLowerCase();
+const partFoul = await call('password_guess_word', { heard: `it is used to ${part} things`, guess: CLEAN });
+check(
+  'the foul is called on the word itself',
+  partFoul.result === 'foul' && partFoul.banned_word_they_said === partCard.secret,
+  JSON.stringify(partFoul).slice(0, 200),
+);
+check('and the result names what they actually said', partFoul.they_said === part, partFoul.they_said);
+check(
+  'the secret on the card is struck, not a banned word',
+  document.getElementById('secret').classList.contains('struck') && struckItems().length === 0,
+  `secret classes: ${document.getElementById('secret').className}`,
+);
+check(
+  'the card says which part was said',
+  document.getElementById('eyebrow').textContent.includes(`"${part}"`),
+  document.getElementById('eyebrow').textContent,
+);
+check(
+  'the agent is told it was part of the word',
+  /part of the word/.test(partFoul.next_action ?? ''),
+  partFoul.next_action,
+);
+
+console.log('\nThe last card of half one finishes spinning before half two repaints');
+
+await call('password_new_game');
+for (let i = 1; i < game.getState().cardsInHalf; i++) {
+  await call('password_guess_word', { heard: CLEAN, guess: game.getState().card.secret });
+}
+const finalWord = game.getState().card.secret;
+await call('password_guess_word', { heard: CLEAN, guess: finalWord });
+// The agent's first half-two clue, arriving while the win is still spinning.
+await call('password_say_clue', { clue: CLEAN });
+await sleep(100);
+check(
+  'the won word is still on the card after the first clue',
+  faceText() === finalWord && document.getElementById('eyebrow').textContent === 'Got it',
+  `face "${faceText()}", eyebrow "${document.getElementById('eyebrow').textContent}"`,
+);
+check(
+  'and it spins green',
+  await waitFor(() => document.querySelectorAll('#secret .ch.spun').length === finalWord.length),
+);
+const halfTwoWord = game.getState().card.secret;
+check(
+  'then the card turns over to half two',
+  await waitFor(() => faceText() === blanks(halfTwoWord).replace(/\s+/g, '')) &&
+    /describing/i.test(document.getElementById('eyebrow').textContent),
+  `face "${faceText()}", eyebrow "${document.getElementById('eyebrow').textContent}"`,
+);
+
+console.log('\nAccents — PIÑATA is spelled right and matched either way');
+
+const { isCorrectGuess } = await import('../src/engine.ts');
+check('the deck spells it PIÑATA', FULL_DECK.some((c) => c.secret === 'PIÑATA'));
+check('"piñata" is a correct guess', isCorrectGuess('is it a piñata', 'PIÑATA'));
+check('"pinata" is a correct guess', isCorrectGuess('pinata', 'PIÑATA'));
+check('the Ñ hides behind a blank like any letter', blanks('PIÑATA') === '_ _ _ _ _ _', blanks('PIÑATA'));
+
 console.log('\nA second new game — the card on screen has to change with it');
 
 await call('password_new_game');

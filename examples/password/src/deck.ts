@@ -86,7 +86,7 @@ export const PLAYER_CARDS: readonly Card[] = [
   { secret: 'CATAPULT', banned: ['launch', 'castle', 'siege', 'hurling', 'medieval'] },
   { secret: 'YETI', banned: ['snows', 'abominable', 'Himalaya', 'footprint', 'legend'] },
   { secret: 'QUICKSAND', banned: ['sinking', 'trapped', 'jungle', 'struggle', 'sands'] },
-  { secret: 'PINATA', banned: ['candy', 'party', 'stick', 'birthday', 'Mexican'] },
+  { secret: 'PIÑATA', banned: ['candy', 'party', 'stick', 'birthday', 'Mexican'] },
   { secret: 'PODCAST', banned: ['listen', 'episode', 'audio', 'download', 'hosts'] },
   { secret: 'CARTWHEEL', banned: ['gymnast', 'sideways', 'hands', 'tumble', 'wheels'] },
   { secret: 'MOSQUITO', banned: ['biting', 'itchy', 'buzzing', 'blood', 'insect'] },
